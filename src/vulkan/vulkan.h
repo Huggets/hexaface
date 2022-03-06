@@ -7,11 +7,25 @@
 #include <vulkan/vulkan.h>
 #include "../hxf.h"
 #include "../window.h"
+#include "vertex.h"
+#include "../math/algebra-linear.h"
 
 /**
  * \brief The maximum number of frames that can be processed concurently
  */
 #define HXF_MAX_FRAMES_IN_FLIGHT 2
+
+/**
+ * \brief The number of vertex to draw.
+ */
+#define HXF_VERTEX_COUNT 4
+#define HXF_INDICE_COUNT 6
+
+typedef struct HxfUniformBufferObject {
+    HxfMat4 model;
+    HxfMat4 view;
+    HxfMat4 proj;
+} HxfUniformBufferObject;
 
 /**
  * \struct HxfVulkanInstance
@@ -38,6 +52,7 @@ typedef struct HxfVulkanInstance {
     VkExtent2D swapchainExtent;
 
     VkRenderPass renderPass;
+    VkDescriptorSetLayout descriptorSetLayout;
     VkPipelineLayout pipelineLayout;
     VkPipeline graphicsPipeline;
 
@@ -49,6 +64,19 @@ typedef struct HxfVulkanInstance {
     VkSemaphore * imageAvailableSemaphores;
     VkSemaphore * renderFinishedSemaphores;
     VkFence * inFlightFences;
+
+    HxfVertex vertices[HXF_VERTEX_COUNT];
+    uint16_t indices[HXF_INDICE_COUNT];
+
+    VkBuffer vertexBuffer;
+    VkDeviceMemory vertexBufferMemory;
+    VkBuffer indexBuffer;
+    VkDeviceMemory indexBufferMemory;
+    VkBuffer * uniformBuffers;
+    VkDeviceMemory * uniformBuffersMemory;
+
+    VkDescriptorPool descriptorPool;
+    VkDescriptorSet * descriptorSets;
 } HxfVulkanInstance;
 
 /**

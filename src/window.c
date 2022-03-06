@@ -3,12 +3,12 @@
 #include <stdlib.h>
 #include "hxf.h"
 
-#ifdef __linux
+#if defined(HXF_WINDOW_XLIB)
 #include <vulkan/vulkan_xlib.h>
 #endif
 
 HxfResult hxfCreateWindow(HxfWindow * window) {
-#ifdef __linux
+#if defined(HXF_WINDOW_XLIB)
     // Get the default display
     window->xdisplay = XOpenDisplay(NULL);
     if (window->xdisplay == NULL) {
@@ -19,17 +19,21 @@ HxfResult hxfCreateWindow(HxfWindow * window) {
     window->xscreenNumber = DefaultScreen(window->xdisplay);
     window->xwindow = XCreateWindow(
         window->xdisplay, RootWindow(window->xdisplay, window->xscreenNumber), 0, 0,
-        HXF_WINDOW_WIDTH, HXF_WINDOW_HEIGHT, 1, CopyFromParent, InputOutput, CopyFromParent, 0, NULL);
+        HXF_WINDOW_WIDTH, HXF_WINDOW_HEIGHT, 50, CopyFromParent, InputOutput, CopyFromParent, 0, NULL);
+
+    // Allow to handle the close button
+    window->wm_protocols = XInternAtom(window->xdisplay, "WM_PROTOCOLS", False);
+    window->wm_delete_window = XInternAtom(window->xdisplay, "WM_DELETE_WINDOW", False);
+    XSetWMProtocols(window->xdisplay, window->xwindow, &window->wm_delete_window, 1);
 
     XSelectInput(window->xdisplay, window->xwindow, KeyPressMask | KeyReleaseMask);
     XMapWindow(window->xdisplay, window->xwindow);
-    XClearWindow(window->xdisplay, window->xwindow);
 #endif
     return HXF_SUCCESS;
 }
 
 void hxfDestroyWindow(HxfWindow * window) {
-#ifdef __linux
+#if defined(HXF_WINDOW_XLIB)
     XDestroyWindow(window->xdisplay, window->xwindow);
     XCloseDisplay(window->xdisplay);
     window->xdisplay = NULL;
@@ -37,8 +41,9 @@ void hxfDestroyWindow(HxfWindow * window) {
 #endif
 }
 
-int hxfPendingEvents(HxfWindow * window) {
-#ifdef __linux
+int hxfHasPendingEvents(HxfWindow * window) {
+#if defined(HXF_WINDOW_XLIB)
+    // For xlib the return value is the number of pending events
     XFlush(window->xdisplay);
     return XQLength(window->xdisplay);
 #else
@@ -46,34 +51,45 @@ int hxfPendingEvents(HxfWindow * window) {
 #endif
 }
 
-void hxfReadNextEvent(HxfWindow * window, HxfEvent * event) {
-#ifdef __linux
+static void setEventKey(HxfEvent * event, unsigned int keycode) {
+    switch (keycode) {
+    case 9:
+        event->data = HXF_EVENT_KEY_ESCAPE;
+        break;
+    case 65:
+        event->data = HXF_EVENT_KEY_SPACE;
+        break;
+    default:
+        event->data = HXF_EVENT_KEY_UNKNOWN;
+    }
+}
+
+void hxfGetNextEvent(HxfWindow * window, HxfEvent * event) {
+#if defined(HXF_WINDOW_XLIB)
     XEvent xevent;
     XNextEvent(window->xdisplay, &xevent);
 
-    if (xevent.type == KeyRelease || xevent.type == KeyPress) {
-        if (xevent.type == KeyRelease) {
-            event->type = HXF_EVENT_TYPE_KEYRELEASE;
-        } else {
-            event->type = HXF_EVENT_TYPE_KEYPRESS;
-        }
-
-        switch (xevent.xkey.keycode) {
-        case 9:
-            event->key = HXF_EVENT_KEY_ESCAPE;
-            break;
-        case 65:
-            event->key = HXF_EVENT_KEY_SPACE;
-            break;
-        default:
-            event->key = HXF_EVENT_KEY_UNKNOWN;
+    switch (xevent.type) {
+    case KeyRelease:
+        event->type = HXF_EVENT_TYPE_KEYRELEASE;
+        setEventKey(event, xevent.xkey.keycode);
+        break;
+    case KeyPress:
+        event->type = HXF_EVENT_TYPE_KEYPRESS;
+        setEventKey(event, xevent.xkey.keycode);
+        break;
+    case ClientMessage:
+        // This can happen when the window manager ask to close the window (because of alt-f4 or the close
+        // button for example)
+        if (xevent.xclient.message_type == window->wm_protocols && xevent.xclient.data.l[0] == window->wm_delete_window) {
+            event->type = HXF_EVENT_TYPE_WINDOW_SHOULD_CLOSE;
         }
     }
 #endif
 }
 
 HxfResult hxfGetRequiredWindowVulkanExtension(char *** extensions, u_int32_t * count) {
-#ifdef __linux
+#if defined(HXF_WINDOW_XLIB)
     *count = 2;
     *extensions = hxfMalloc(sizeof(char *) * (*count));
 
@@ -88,7 +104,7 @@ HxfResult hxfGetRequiredWindowVulkanExtension(char *** extensions, u_int32_t * c
 }
 
 HxfResult hxfCreateVulkanSurface(HxfWindow * window, VkInstance instance, VkSurfaceKHR * surface) {
-#ifdef __linux
+#if defined(HXF_WINDOW_XLIB)
     VkXlibSurfaceCreateInfoKHR surfaceCreateInfo;
     surfaceCreateInfo.sType = VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR;
     surfaceCreateInfo.pNext = NULL;
@@ -102,4 +118,20 @@ HxfResult hxfCreateVulkanSurface(HxfWindow * window, VkInstance instance, VkSurf
 
     return HXF_SUCCESS;
 #endif
+}
+
+void hxfGetWindowSize(HxfWindow * window, unsigned int * width, unsigned int * height) {
+#if defined(HXF_WINDOW_XLIB)
+    *width = HXF_WINDOW_WIDTH;
+    *height = HXF_WINDOW_HEIGHT;
+#endif
+}
+
+HxfWindowInformation * hxfGetWindowInformation(HxfWindow * window) {
+    XWindowAttributes * attributes = NULL;
+    XGetWindowAttributes(window->xdisplay, window->xwindow, attributes);
+    window->info.height = attributes->height;
+    window->info.width = attributes->width;
+
+    return &window->info;
 }

@@ -2,8 +2,7 @@
 #include <stdlib.h>
 #include "../window.h"
 #include <string.h>
-
-#include <stdio.h>
+#include <time.h>
 
 /**
  * \struct QueueFamilyIndices
@@ -220,6 +219,104 @@ static void setupDebugMessenger(HxfVulkanInstance * instance) {
 }
 #endif
 
+static uint32_t findMemoryType(HxfVulkanInstance * instance, uint32_t typeFilter, VkMemoryPropertyFlags properties) {
+    VkPhysicalDeviceMemoryProperties memProperties;
+    vkGetPhysicalDeviceMemoryProperties(instance->physicalDevice, &memProperties);
+
+    for (uint32_t i = 0; i != memProperties.memoryTypeCount; i++) {
+        if (typeFilter & (1 << i) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties) {
+            return i;
+        }
+    }
+
+    HXF_MSG_ERROR("failed to find suitable memory type");
+    exit(EXIT_FAILURE);
+
+    return 0; // Never execute, just here to avoid compiler warning
+}
+
+static void createBuffer(
+    HxfVulkanInstance * instance,
+    VkDeviceSize size,
+    VkBufferUsageFlags usage,
+    VkMemoryPropertyFlags properties,
+    VkBuffer * buffer,
+    VkDeviceMemory * bufferMemory
+) {
+    VkBufferCreateInfo bufferInfo;
+    bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    bufferInfo.pNext = NULL;
+    bufferInfo.flags = 0;
+    bufferInfo.size = size;
+    bufferInfo.usage = usage;
+    bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    bufferInfo.queueFamilyIndexCount = 0;
+    bufferInfo.pQueueFamilyIndices = NULL;
+    
+    if (vkCreateBuffer(instance->device, &bufferInfo, NULL, buffer)) {
+        HXF_MSG_ERROR("failed to create buffer");
+        exit(EXIT_FAILURE);
+    }
+
+    VkMemoryRequirements memRequirements;
+    vkGetBufferMemoryRequirements(instance->device, *buffer, &memRequirements);
+
+    VkMemoryAllocateInfo allocInfo;
+    allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    allocInfo.pNext = NULL;
+    allocInfo.allocationSize = memRequirements.size;
+    allocInfo.memoryTypeIndex = findMemoryType(instance, memRequirements.memoryTypeBits, properties);
+
+    if (vkAllocateMemory(instance->device, &allocInfo, NULL, bufferMemory)) {
+        HXF_MSG_ERROR("failed to allocate buffer memory");
+        exit(EXIT_FAILURE);
+    }
+
+    vkBindBufferMemory(instance->device, *buffer, *bufferMemory, 0);
+}
+
+static void copyBuffer(HxfVulkanInstance * instance, VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size) {
+    VkCommandBufferAllocateInfo allocInfo;
+    allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    allocInfo.pNext = NULL;
+    allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    allocInfo.commandPool = instance->commandPool;
+    allocInfo.commandBufferCount = 1;
+
+    VkCommandBuffer commandBuffer;
+    vkAllocateCommandBuffers(instance->device, &allocInfo, &commandBuffer);
+
+    VkCommandBufferBeginInfo beginInfo = {0};
+    beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+    vkBeginCommandBuffer(commandBuffer, &beginInfo);
+
+    VkBufferCopy copyRegion;
+    copyRegion.srcOffset = 0;
+    copyRegion.dstOffset = 0;
+    copyRegion.size = size;
+    vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
+
+    vkEndCommandBuffer(commandBuffer);
+
+    VkSubmitInfo submitInfo;
+    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submitInfo.pNext = NULL;
+    submitInfo.commandBufferCount = 1;
+    submitInfo.pCommandBuffers = &commandBuffer;
+    submitInfo.pWaitDstStageMask = NULL;
+    submitInfo.signalSemaphoreCount = 0;
+    submitInfo.pSignalSemaphores = NULL;
+    submitInfo.waitSemaphoreCount = 0;
+    submitInfo.pWaitSemaphores = NULL;
+
+    vkQueueSubmit(instance->graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
+    vkQueueWaitIdle(instance->graphicsQueue);
+
+    vkFreeCommandBuffers(instance->device, instance->commandPool, 1, &commandBuffer);
+}
+
 static void createInstance(HxfVulkanInstance * instance) {
 #ifdef HXF_VALIDATION_LAYERS
     checkValidationLayerSupport(validationLayers, VALIDATION_LAYER_COUNT);
@@ -380,7 +477,7 @@ static int isDeviceSuitable(HxfVulkanInstance * instance, VkPhysicalDevice devic
 
     int extensionSupported = checkDeviceExtensionSupport(device);
 
-    int swapchainAdequate;
+    int swapchainAdequate = 0;
     if (extensionSupported) {
         SwapchainSupportDetails swapchainSupport = querySwapchainSupport(instance, device);
         swapchainAdequate = swapchainSupport.formatSize != 0 && swapchainSupport.presentModeSize != 0;
@@ -485,7 +582,7 @@ static VkSurfaceFormatKHR chooseSwapSurfaceFormat(const VkSurfaceFormatKHR * ava
         if (
             availableFormats[i].format == VK_FORMAT_B8G8R8A8_SRGB &&
             availableFormats[i].colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR
-            ) {
+        ) {
             return availableFormats[i];
         }
     }
@@ -494,23 +591,34 @@ static VkSurfaceFormatKHR chooseSwapSurfaceFormat(const VkSurfaceFormatKHR * ava
 }
 
 static VkPresentModeKHR chooseSwapPresentMode(const VkPresentModeKHR * availablePresentModes, int count) {
-    for (int i = 0; i != count; i++) {
-        if (availablePresentModes[i] == VK_PRESENT_MODE_MAILBOX_KHR) {
-            return VK_PRESENT_MODE_MAILBOX_KHR;
-        }
-    }
-
     return VK_PRESENT_MODE_FIFO_KHR;
 }
 
-static VkExtent2D chooseSwapchainExtent(VkSurfaceCapabilitiesKHR capabilities) {
+static VkExtent2D chooseSwapchainExtent(HxfVulkanInstance * instance, VkSurfaceCapabilitiesKHR capabilities) {
     if (capabilities.currentExtent.width != UINT32_MAX) {
         return capabilities.currentExtent;
     } else {
+        HxfWindowInformation * windowInfo = hxfGetWindowInformation(&instance->window);
         VkExtent2D actualExtent = {
-            HXF_WINDOW_HEIGHT,
-            HXF_WINDOW_WIDTH
+            windowInfo->height,
+            windowInfo->width
         };
+
+        if (actualExtent.height < capabilities.minImageExtent.height)
+        {
+            actualExtent.height = capabilities.minImageExtent.height;
+        }
+        else if (actualExtent.height > capabilities.maxImageExtent.height) {
+            actualExtent.height = capabilities.maxImageExtent.height;
+        }
+
+        if (actualExtent.width < capabilities.minImageExtent.width)
+        {
+            actualExtent.width = capabilities.minImageExtent.width;
+        }
+        else if (actualExtent.width > capabilities.maxImageExtent.width) {
+            actualExtent.width = capabilities.maxImageExtent.width;
+        }
 
         return actualExtent;
     }
@@ -521,7 +629,7 @@ static void createSwapchain(HxfVulkanInstance * instance) {
 
     VkSurfaceFormatKHR surfaceFormat = chooseSwapSurfaceFormat(swapchainSupport.formats, swapchainSupport.formatSize);
     VkPresentModeKHR presentMode = chooseSwapPresentMode(swapchainSupport.presentModes, swapchainSupport.presentModeSize);
-    VkExtent2D extent = chooseSwapchainExtent(swapchainSupport.capabilities);
+    VkExtent2D extent = chooseSwapchainExtent(instance, swapchainSupport.capabilities);
 
     free(swapchainSupport.formats);
     free(swapchainSupport.presentModes);
@@ -617,8 +725,8 @@ static void createGraphicsPipeline(HxfVulkanInstance * instance) {
     size_t fragShaderCodeSize;
 
     if (
-        readFile("data/shaders/vert.spv", &vertShaderCode, &vertShaderCodeSize) == HXF_ERROR ||
-        readFile("data/shaders/frag.spv", &fragShaderCode, &fragShaderCodeSize)
+        readFile("../data/shaders/vert.spv", &vertShaderCode, &vertShaderCodeSize) == HXF_ERROR ||
+        readFile("../data/shaders/frag.spv", &fragShaderCode, &fragShaderCodeSize)
         ) {
         HXF_MSG_ERROR("failed to read shaders file in data/shaders/");
         exit(EXIT_FAILURE);
@@ -653,14 +761,18 @@ static void createGraphicsPipeline(HxfVulkanInstance * instance) {
         fragShaderStageInfo
     };
 
+    VkVertexInputBindingDescription bindingDescription = hxfVertexGetBindingDescription();
+    VkVertexInputAttributeDescription * attributeDescriptions = hxfVertexGetAttributeDescriptions(); // Array of size 2
+    const int attributeDescriptionSize = 2;
+
     VkPipelineVertexInputStateCreateInfo vertexInputInfo;
     vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
     vertexInputInfo.pNext = NULL;
     vertexInputInfo.flags = 0;
-    vertexInputInfo.vertexBindingDescriptionCount = 0;
-    vertexInputInfo.pVertexBindingDescriptions = NULL;
-    vertexInputInfo.vertexAttributeDescriptionCount = 0;
-    vertexInputInfo.pVertexAttributeDescriptions = NULL;
+    vertexInputInfo.vertexBindingDescriptionCount = 1;
+    vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
+    vertexInputInfo.vertexAttributeDescriptionCount = attributeDescriptionSize;
+    vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions;
 
     VkPipelineInputAssemblyStateCreateInfo inputAssembly;
     inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
@@ -744,8 +856,8 @@ static void createGraphicsPipeline(HxfVulkanInstance * instance) {
     pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     pipelineLayoutInfo.pNext = NULL;
     pipelineLayoutInfo.flags = 0;
-    pipelineLayoutInfo.setLayoutCount = 0;
-    pipelineLayoutInfo.pSetLayouts = NULL;
+    pipelineLayoutInfo.setLayoutCount = 1;
+    pipelineLayoutInfo.pSetLayouts = &instance->descriptorSetLayout;
     pipelineLayoutInfo.pushConstantRangeCount = 0;
     pipelineLayoutInfo.pPushConstantRanges = NULL;
 
@@ -778,6 +890,8 @@ static void createGraphicsPipeline(HxfVulkanInstance * instance) {
         HXF_MSG_ERROR("failed to create graphics pipeline");
         exit(EXIT_FAILURE);
     }
+
+    free(attributeDescriptions);
 
     vkDestroyShaderModule(instance->device, fragShaderModule, NULL);
     vkDestroyShaderModule(instance->device, vertShaderModule, NULL);
@@ -907,7 +1021,14 @@ static void recordCommandBuffer(HxfVulkanInstance * instance, VkCommandBuffer co
 
     vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, instance->graphicsPipeline);
 
-    vkCmdDraw(commandBuffer, 3, 1, 0, 0);
+    VkBuffer vertexBuffers[] = { instance->vertexBuffer };
+    VkDeviceSize offsets[] = { 0 };
+    vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
+    vkCmdBindIndexBuffer(commandBuffer, instance->indexBuffer, 0, VK_INDEX_TYPE_UINT16);
+    vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, instance->pipelineLayout, 0, 1,
+        &instance->descriptorSets[instance->currentFrame], 0, NULL);
+
+    vkCmdDrawIndexed(commandBuffer, (uint32_t)HXF_INDICE_COUNT, 1, 0, 0, 0);
 
     vkCmdEndRenderPass(commandBuffer);
 
@@ -978,6 +1099,14 @@ static void cleanupSwapchain(HxfVulkanInstance * instance) {
     free(instance->swapchainImages);
 
     vkDestroySwapchainKHR(instance->device, instance->swapchain, NULL);
+
+    for (size_t i = 0; i != HXF_MAX_FRAMES_IN_FLIGHT; i++) {
+        vkDestroyBuffer(instance->device, instance->uniformBuffers[i], NULL);
+        vkFreeMemory(instance->device, instance->uniformBuffersMemory[i], NULL);
+    }
+
+    free(instance->uniformBuffers);
+    free(instance->uniformBuffersMemory);
 }
 
 static void recreateSwapchain(HxfVulkanInstance * instance) {
@@ -990,6 +1119,30 @@ static void recreateSwapchain(HxfVulkanInstance * instance) {
     createRenderPass(instance);
     createGraphicsPipeline(instance);
     createFramebuffers(instance);
+}
+
+static void updateUniformBuffer(HxfVulkanInstance * instance, uint32_t currentImage) {
+    static const float inv = 1.0f / (float)CLOCKS_PER_SEC;
+    
+    float now = clock() * inv;
+
+    HxfUniformBufferObject ubo = {
+        HXF_MAT4_IDENTITY,
+        HXF_MAT4_IDENTITY,
+        HXF_MAT4_IDENTITY
+    };
+
+    HxfVec3 tmp = {0.0f, 0.5f, 1.0f};
+
+    // ubo.model = hxfMat4Rotate(&ubo.model, 3.1415f * 20.0f * now, &tmp);
+    hxfMat4Translate(&ubo.view, &tmp);
+    // ubo.view = hxfPerspectiveProjection(0.01f, 10.0f, 1.57f, 1.333333f);
+    // hxfMat4Scale(&ubo.model, &tmp2);
+
+    void * data;
+    vkMapMemory(instance->device, instance->uniformBuffersMemory[currentImage], 0, sizeof(ubo), 0, &data);
+    memcpy(data, &ubo, sizeof(ubo));
+    vkUnmapMemory(instance->device, instance->uniformBuffersMemory[currentImage]);
 }
 
 static void drawFrame(HxfVulkanInstance * instance) {
@@ -1012,6 +1165,8 @@ static void drawFrame(HxfVulkanInstance * instance) {
 
     vkResetCommandBuffer(instance->commandBuffers[instance->currentFrame], 0);
     recordCommandBuffer(instance, instance->commandBuffers[instance->currentFrame], imageIndex);
+
+    updateUniformBuffer(instance, instance->currentFrame);
 
     VkSubmitInfo submitInfo;
     submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -1059,8 +1214,176 @@ static void drawFrame(HxfVulkanInstance * instance) {
     instance->currentFrame = (instance->currentFrame + 1) % HXF_MAX_FRAMES_IN_FLIGHT;
 }
 
+static void createVertexBuffer(HxfVulkanInstance * instance) {
+    VkDeviceSize bufferSize = sizeof(HxfVertex) * HXF_VERTEX_COUNT;
+
+    VkBuffer stagingBuffer;
+    VkDeviceMemory stagingBufferMemory;
+    createBuffer(
+        instance,
+        bufferSize,
+        VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+        &stagingBuffer, &stagingBufferMemory);
+    
+    void * data;
+    vkMapMemory(instance->device, stagingBufferMemory, 0, bufferSize, 0, &data);
+    memcpy(data, instance->vertices, (size_t)bufferSize);
+    vkUnmapMemory(instance->device, stagingBufferMemory);
+
+    createBuffer(
+        instance,
+        bufferSize,
+        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+        &instance->vertexBuffer, &instance->vertexBufferMemory);
+
+    copyBuffer(instance, stagingBuffer, instance->vertexBuffer, bufferSize);
+
+    vkDestroyBuffer(instance->device, stagingBuffer, NULL);
+    vkFreeMemory(instance->device, stagingBufferMemory, NULL);
+}
+
+void createIndexBuffer(HxfVulkanInstance * instance) {
+    VkDeviceSize bufferSize = sizeof(uint16_t) * HXF_INDICE_COUNT;
+
+    VkBuffer stagingBuffer;
+    VkDeviceMemory stagingBufferMemory;
+    createBuffer(
+        instance,
+        bufferSize,
+        VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+        &stagingBuffer, &stagingBufferMemory);
+
+    void* data;
+    vkMapMemory(instance->device, stagingBufferMemory, 0, bufferSize, 0, &data);
+    memcpy(data, instance->indices, (size_t) bufferSize);
+    vkUnmapMemory(instance->device, stagingBufferMemory);
+
+    createBuffer(instance,
+        bufferSize,
+        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+        &instance->indexBuffer, &instance->indexBufferMemory);
+
+    copyBuffer(instance, stagingBuffer, instance->indexBuffer, bufferSize);
+
+    vkDestroyBuffer(instance->device, stagingBuffer, NULL);
+    vkFreeMemory(instance->device, stagingBufferMemory, NULL);
+}
+
+static void createUniformBuffers(HxfVulkanInstance * instance) {
+    VkDeviceSize bufferSize = sizeof(HxfUniformBufferObject);
+
+    instance->uniformBuffers = hxfMalloc(sizeof(VkBuffer) * HXF_MAX_FRAMES_IN_FLIGHT);
+    instance->uniformBuffersMemory = hxfMalloc(sizeof(VkDeviceMemory) * HXF_MAX_FRAMES_IN_FLIGHT);
+
+    for (size_t i = 0; i != HXF_MAX_FRAMES_IN_FLIGHT; i++) {
+        createBuffer(
+            instance,
+            bufferSize,
+            VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+            &instance->uniformBuffers[i], &instance->uniformBuffersMemory[i]);
+    }
+}
+
+static void createDescriptorSetLayout(HxfVulkanInstance * instance) {
+    VkDescriptorSetLayoutBinding uboLayoutBinding = {0};
+    uboLayoutBinding.binding = 0;
+    uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    uboLayoutBinding.descriptorCount = 1;
+    uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+    
+    VkDescriptorSetLayoutCreateInfo layoutInfo = {0};
+    layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    layoutInfo.bindingCount = 1;
+    layoutInfo.pBindings = &uboLayoutBinding;
+
+    if (vkCreateDescriptorSetLayout(instance->device, &layoutInfo, NULL, &instance->descriptorSetLayout)) {
+        HXF_MSG_ERROR("failed to create descriptor set layout");
+        exit(EXIT_FAILURE);
+    }
+}
+
+static void createDescriptorPool(HxfVulkanInstance * instance) {
+    VkDescriptorPoolSize poolSize = {0};
+    poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    poolSize.descriptorCount = (uint32_t)HXF_MAX_FRAMES_IN_FLIGHT;
+
+    VkDescriptorPoolCreateInfo poolInfo = {0};
+    poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+    poolInfo.poolSizeCount = 1;
+    poolInfo.pPoolSizes = &poolSize;
+    poolInfo.maxSets = (uint32_t)HXF_MAX_FRAMES_IN_FLIGHT;
+
+    if (vkCreateDescriptorPool(instance->device, &poolInfo, NULL, &instance->descriptorPool)) {
+        HXF_MSG_ERROR("failed to create descriptor pool");
+        exit(EXIT_FAILURE);
+    }
+}
+
+static void createDescriptorSets(HxfVulkanInstance * instance) {
+    VkDescriptorSetLayout * layouts = hxfMalloc(sizeof(VkDescriptorSetLayout) * HXF_MAX_FRAMES_IN_FLIGHT);
+    for (size_t i = 0; i != HXF_MAX_FRAMES_IN_FLIGHT; i++) {
+        layouts[i] = instance->descriptorSetLayout;
+    }
+
+    VkDescriptorSetAllocateInfo allocInfo = {0};
+    allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+    allocInfo.descriptorPool = instance->descriptorPool;
+    allocInfo.descriptorSetCount = (uint32_t)HXF_MAX_FRAMES_IN_FLIGHT;
+    allocInfo.pSetLayouts = layouts;
+
+    instance->descriptorSets = hxfMalloc(sizeof(VkDescriptorSet) * HXF_MAX_FRAMES_IN_FLIGHT);
+
+    if (vkAllocateDescriptorSets(instance->device, &allocInfo, instance->descriptorSets)) {
+        HXF_MSG_ERROR("failed to allocate discriptor sets");
+        exit(EXIT_FAILURE);
+    }
+
+    free(layouts);
+
+    for (size_t i = 0; i != HXF_MAX_FRAMES_IN_FLIGHT; i++) {
+        VkDescriptorBufferInfo bufferInfo = {0};
+        bufferInfo.buffer = instance->uniformBuffers[i];
+        bufferInfo.offset = 0;
+        bufferInfo.range = sizeof(HxfUniformBufferObject);
+
+        VkWriteDescriptorSet descriptorWrite = {0};
+        descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrite.dstSet = instance->descriptorSets[i];
+        descriptorWrite.dstBinding = 0;
+        descriptorWrite.dstArrayElement = 0;
+        descriptorWrite.descriptorCount = 1;
+        descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        descriptorWrite.pBufferInfo = &bufferInfo;
+
+        vkUpdateDescriptorSets(instance->device, 1, &descriptorWrite, 0, NULL);
+    }
+}
+
 void hxfInitVulkan(HxfVulkanInstance * instance) {
     instance->currentFrame = 0;
+
+    // Initialize the vertices and the indices
+    const HxfVertex vertices[HXF_VERTEX_COUNT] = {
+        {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
+        {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
+        {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
+        {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}
+    };
+    for (unsigned int i = HXF_VERTEX_COUNT -1 ; i != -1; i--) {
+        instance->vertices[i] = vertices[i];
+    }
+
+    const uint16_t indices[HXF_INDICE_COUNT] = {
+        0, 1, 2, 2, 3, 0
+    };
+    for (unsigned int i = HXF_INDICE_COUNT - 1; i != -1; i--) {
+        instance->indices[i] = indices[i];
+    }
 
     if (hxfCreateWindow(&instance->window) == HXF_WINDOW_CREATION_ERROR) {
         HXF_MSG_ERROR("could not create the window");
@@ -1077,21 +1400,37 @@ void hxfInitVulkan(HxfVulkanInstance * instance) {
     createSwapchain(instance);
     createImageViews(instance);
     createRenderPass(instance);
+    createDescriptorSetLayout(instance);
     createGraphicsPipeline(instance);
     createFramebuffers(instance);
     createCommandPool(instance);
+    createVertexBuffer(instance);
+    createIndexBuffer(instance);
+    createUniformBuffers(instance);
+    createDescriptorPool(instance);
+    createDescriptorSets(instance);
     createCommandBuffers(instance);
     createSyncObjects(instance);
 }
 
 void hxfDestroyVulkan(HxfVulkanInstance * instance) {
+    cleanupSwapchain(instance);
+
+    free(instance->descriptorSets);
+    vkDestroyDescriptorPool(instance->device, instance->descriptorPool, NULL);
+
+    vkDestroyDescriptorSetLayout(instance->device, instance->descriptorSetLayout, NULL);
+
+    vkDestroyBuffer(instance->device, instance->indexBuffer, NULL);
+    vkFreeMemory(instance->device, instance->indexBufferMemory, NULL);
+    vkDestroyBuffer(instance->device, instance->vertexBuffer, NULL);
+    vkFreeMemory(instance->device, instance->vertexBufferMemory, NULL);
+
     for (size_t i = 0; i != HXF_MAX_FRAMES_IN_FLIGHT; i++) {
         vkDestroySemaphore(instance->device, instance->imageAvailableSemaphores[i], NULL);
         vkDestroySemaphore(instance->device, instance->renderFinishedSemaphores[i], NULL);
         vkDestroyFence(instance->device, instance->inFlightFences[i], NULL);
     }
-
-    cleanupSwapchain(instance);
 
     free(instance->commandBuffers);
     vkDestroyCommandPool(instance->device, instance->commandPool, NULL);
@@ -1110,14 +1449,19 @@ void hxfRunVulkan(HxfVulkanInstance * instance) {
     int isRunning = 1;
     while (isRunning) {
         // Read all the events
-        for (int i = hxfPendingEvents(&instance->window); i != 0; i--) {
+        while (hxfHasPendingEvents(&instance->window)) {
             HxfEvent event;
-            hxfReadNextEvent(&instance->window, &event);
+            hxfGetNextEvent(&instance->window, &event);
 
             if (event.type == HXF_EVENT_TYPE_KEYPRESS) {
-                if (event.key == HXF_EVENT_KEY_ESCAPE) {
+                if (event.data == HXF_EVENT_KEY_ESCAPE) {
                     isRunning = 0;
                 }
+            }
+            else if (event.type == HXF_EVENT_TYPE_KEYRELEASE) {
+            }
+            else if (event.type == HXF_EVENT_TYPE_WINDOW_SHOULD_CLOSE) {
+                isRunning = 0;
             }
         }
 

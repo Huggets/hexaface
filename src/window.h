@@ -1,10 +1,10 @@
 /**
  * \file window.h
- * \brief Plateform independant code for windows.
+ * \brief Plateform independant code for window.
  */
 #pragma once
 
-#ifdef __linux
+#if defined(HXF_WINDOW_XLIB)
 #include "X11/Xlib.h"
 #endif
 
@@ -25,19 +25,32 @@
 #define HXF_WINDOW_WIDTH 800
 
 /**
+ * Information about a window.
+ */
+typedef struct HxfWindowInformation {
+    int width;
+    int height;
+} HxfWindowInformation;
+
+/**
  * \struct HxfWindow
  * \brief A window that can be used to draw things on.
+ * 
+ * The members must not be accessed or modified.
  */
 typedef struct HxfWindow {
-#ifdef __linux
+#if defined(HXF_WINDOW_XLIB)
     Display * xdisplay;
     Window xwindow;
     int xscreenNumber;
+    Atom wm_protocols;
+    Atom wm_delete_window;
+    HxfWindowInformation info;
 #endif
 } HxfWindow;
 
 /**
- * \brief Initializes and creates the window.
+ * \brief Initialize and create the window.
  * \param window The window to initialize.
  * \return HXF_WINDOW_CREATION_ERROR if the window could not be created.\n
  * HXF_SUCCESS otherwise
@@ -45,27 +58,27 @@ typedef struct HxfWindow {
 HxfResult hxfCreateWindow(HxfWindow * window);
 
 /**
- * \brief Destroys the window.
+ * \brief Destroy the window.
  * \param window The window to destroy.
  */
 void hxfDestroyWindow(HxfWindow * window);
 
 /**
- * \brief Return the number of pending events of the window.
+ * \brief Indicate if there are pending events.
  * \param window The window from which events are counted.
- * \return The number of pending events.
+ * \return 0 if there are no pending events, a number different than zero if there are pending events.
  */
-int hxfPendingEvents(HxfWindow * window);
+int hxfHasPendingEvents(HxfWindow * window);
 
 /**
- * \brief Reads the next event.
+ * \brief Get the next event available.
  * \param window The window from which the next event is read.
  * \param event The event that is read.
  */
-void hxfReadNextEvent(HxfWindow * window, HxfEvent * event);
+void hxfGetNextEvent(HxfWindow * window, HxfEvent * event);
 
 /**
- * \brief Gets the extensions needed by vulkan to work with windows.
+ * \brief Get the extensions needed by vulkan to work with windows.
  * \param extensions A pointer to an array of char strings containing the required extensions.
  * \param count The size of the array.
  * \return HXF_SUCCESS.
@@ -76,7 +89,7 @@ HxfResult hxfGetRequiredWindowVulkanExtension(char *** extensions, u_int32_t * c
 
 /**
  * \brief Create a Vulkan surface from the window.
- * \param window The window from which we want to create the surface.
+ * \param window The window.
  * \param instance The Vulkan instance that hold the surface.
  * \param surface The created surface.
  * 
@@ -84,3 +97,18 @@ HxfResult hxfGetRequiredWindowVulkanExtension(char *** extensions, u_int32_t * c
  * HXF_SUCCESS if nothing went wrong.
  */
 HxfResult hxfCreateVulkanSurface(HxfWindow * window, VkInstance instance, VkSurfaceKHR * surface);
+
+/**
+ * \brief Get the current size of the window.
+ * \param window The window.
+ * \param width A pointer to an unsigned that will be set to the window width.
+ * \param height A pointer to an unsigned that will be set to the window eight.
+ */
+void hxfGetWindowSize(HxfWindow * window, unsigned int * width, unsigned int * height);
+
+/**
+ * \brief Get information about a window such as the width and height.
+ * \param window The window.
+ * \return A HxfWindowInformation pointer that gives information about the window.
+ */
+HxfWindowInformation * hxfGetWindowInformation(HxfWindow * window);
