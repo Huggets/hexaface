@@ -12,7 +12,7 @@
  * \brief Represent a single vertex on the GPU.
  */
 typedef struct HxfVertex {
-    HxfVec2 pos; ///< The position of the vertex
+    HxfVec3 pos; ///< The position of the vertex
     HxfVec3 color; ///< The color of the vertex
 } HxfVertex;
 

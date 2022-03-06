@@ -18,8 +18,8 @@
 /**
  * \brief The number of vertex to draw.
  */
-#define HXF_VERTEX_COUNT 4
-#define HXF_INDICE_COUNT 6
+#define HXF_VERTEX_COUNT 8
+#define HXF_INDICE_COUNT 12
 
 typedef struct HxfUniformBufferObject {
     HxfMat4 model;
@@ -77,6 +77,10 @@ typedef struct HxfVulkanInstance {
 
     VkDescriptorPool descriptorPool;
     VkDescriptorSet * descriptorSets;
+
+    VkImage depthImage;
+    VkDeviceMemory depthImageMemory;
+    VkImageView depthImageView;
 } HxfVulkanInstance;
 
 /**
