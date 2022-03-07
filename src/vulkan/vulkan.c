@@ -806,10 +806,10 @@ static VkExtent2D chooseSwapchainExtent(HxfVulkanInstance * instance, VkSurfaceC
     if (capabilities.currentExtent.width != UINT32_MAX) {
         return capabilities.currentExtent;
     } else {
-        HxfWindowInformation * windowInfo = hxfGetWindowInformation(&instance->window);
+        hxfUpdateWindowInformation(&instance->window);
         VkExtent2D actualExtent = {
-            windowInfo->height,
-            windowInfo->width
+            instance->window.info.height,
+            instance->window.info.width
         };
 
         if (actualExtent.height < capabilities.minImageExtent.height)
@@ -1370,17 +1370,16 @@ static void recreateSwapchain(HxfVulkanInstance * instance) {
 }
 
 static void updateUniformBuffer(HxfVulkanInstance * instance, uint32_t currentImage) {
+    hxfUpdateWindowInformation(&instance->window); // The latest information on the width and height
+
     HxfUniformBufferObject ubo = {
         HXF_MAT4_IDENTITY,
-        // HXF_MAT4_IDENTITY,
         hxfViewMatrix(
             (HxfVec3){0.f, 0.f, 0.0f},
             (HxfVec3){0.0f, 0.f, -1.f},
             (HxfVec3){0.f, -1.f, 0.f}),
-        hxfPerspectiveProjection(0.1f, 10.f, 1.0472f, (float)instance->window.info.width / (float)instance->window.info.height),
+        hxfPerspectiveProjection(0.1f, 10.f, 1.0472f, (float)instance->window.info.width / (float)instance->window.info.height)
     };
-
-    float time = clock() / (float)CLOCKS_PER_SEC * 200.0f;
 
     ubo.model = hxfMat4MulMat(ubo.model, hxfMat4ScaleMatrix((HxfVec3){0.25f, 0.25f, 0.25f}));
     ubo.model = hxfMat4MulMat(ubo.model, hxfMat4Rotate(3.1415f * 0.25f, (HxfVec3){0.f, 0.f, 1.f}));

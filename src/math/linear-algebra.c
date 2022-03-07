@@ -115,15 +115,6 @@ HxfMat4 hxfMat4Rotate(float angle, HxfVec3 position) {
 }
 
 HxfMat4 hxfPerspectiveProjection(float near, float far, float fov, float aspect) {
-    // const float tan = tanf(fov / 2.0f);
-
-    // return (HxfMat4){{
-    //     {1.0f / (aspect * tan), 0.0f, 0.0f, 0.0f},
-    //     {0.0f, 1.0f / tan, 0.0f, 0.0f},
-    //     {0.0f, 0.0f, far / (far - near), 1.0f},
-    //     {0.0f, 0.0f, 0.0f, - (far * near) / (far - near)}
-    // }};
-
     const float tanHalfFovy = tan(fov / 2.f);
     HxfMat4 projectionMatrix = {0};
     projectionMatrix.mat[0][0] = 1.f / (aspect * tanHalfFovy);

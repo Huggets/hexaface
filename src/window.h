@@ -22,7 +22,7 @@
  * \def HXF_WINDOW_HEIGHT
  * \brief The height of the window.
  */
-#define HXF_WINDOW_HEIGHT 800
+#define HXF_WINDOW_HEIGHT 600
 
 /**
  * \struct HxfKeysState
@@ -63,7 +63,8 @@ typedef struct HxfWindow {
     Atom wm_protocols;
     Atom wm_delete_window;
 #endif
-    HxfWindowInformation info; ///< Can be accessed
+    HxfWindowInformation info; ///< You need to call hxfUpdateWindowInformation to get the latest information
+
     HxfKeysState keysState; ///< The state of the keys
 } HxfWindow;
 
@@ -129,4 +130,4 @@ void hxfGetWindowSize(HxfWindow * window, unsigned int * width, unsigned int * h
  * \param window The window.
  * \return A HxfWindowInformation pointer that gives information about the window.
  */
-HxfWindowInformation * hxfGetWindowInformation(HxfWindow * window);
+void hxfUpdateWindowInformation(HxfWindow * window);

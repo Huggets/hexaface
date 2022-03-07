@@ -34,6 +34,7 @@ HxfResult hxfCreateWindow(HxfWindow * window) {
     window->info.width = HXF_WINDOW_WIDTH;
 
     window->keysState = (HxfKeysState){0};
+
 #endif
     return HXF_SUCCESS;
 }
@@ -176,11 +177,11 @@ void hxfGetWindowSize(HxfWindow * window, unsigned int * width, unsigned int * h
 #endif
 }
 
-HxfWindowInformation * hxfGetWindowInformation(HxfWindow * window) {
-    XWindowAttributes * attributes = NULL;
-    XGetWindowAttributes(window->xdisplay, window->xwindow, attributes);
-    window->info.height = attributes->height;
-    window->info.width = attributes->width;
-
-    return &window->info;
+void hxfUpdateWindowInformation(HxfWindow * window) {
+#if defined(HXF_WINDOW_XLIB)
+    XWindowAttributes attributes;
+    XGetWindowAttributes(window->xdisplay, window->xwindow, &attributes);
+    window->info.height = attributes.height;
+    window->info.width = attributes.width;
+#endif
 }
