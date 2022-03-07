@@ -18,7 +18,7 @@ add_executable(
     src/hxf.c
     src/vulkan/vulkan.c
     src/vulkan/vertex.c
-    src/math/algebra-linear.c
+    src/math/linear-algebra.c
 )
 
 target_link_libraries(hexaface vulkan m)

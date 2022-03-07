@@ -7,7 +7,7 @@
 /**
  * \brief Replace by an identity matrix for HxfMat4
  */
-#define HXF_MAT4_IDENTITY {{\
+#define HXF_MAT4_IDENTITY (HxfMat4){{\
     {1.0f, 0.0f, 0.0f, 0.0f},\
     {0.0f, 1.0f, 0.0f, 0.0f},\
     {0.0f, 0.0f, 1.0f, 0.0f},\
@@ -51,12 +51,6 @@ typedef struct HxfMat4 {
     float mat[4][4];
 } HxfMat4;
 
-/**
- * \brief Return an identity matrix.
- * \return An identity HxfMat4.
- */
-HxfMat4 hxfMat4Identity();
-
 /* OPERATION */
 
 /**
@@ -66,7 +60,7 @@ HxfMat4 hxfMat4Identity();
  * 
  * \return a * b.
  */
-HxfMat4 hxfMat4MulMat(HxfMat4 * a, HxfMat4 * b);
+HxfMat4 hxfMat4MulMat(HxfMat4 a, HxfMat4 b);
 
 /**
  * \brief Multiply a HxfMat4 by a HxfVec4.
@@ -75,7 +69,13 @@ HxfMat4 hxfMat4MulMat(HxfMat4 * a, HxfMat4 * b);
  * 
  * \return a * b.
  */
-HxfVec4 hxfMat4MulVec(HxfMat4 * a, HxfVec4 * b);
+HxfVec4 hxfMat4MulVec(HxfMat4 a, HxfVec4 b);
+
+HxfVec3 hxfVec3Cross(HxfVec3 a, HxfVec3 b);
+
+float hxfVec3Dot(HxfVec3 a, HxfVec3 b);
+
+HxfVec3 hxfVec3Normalize(HxfVec3 a);
 
 /* TRANSFORMATION */
 
@@ -84,14 +84,14 @@ HxfVec4 hxfMat4MulVec(HxfMat4 * a, HxfVec4 * b);
  * 
  * TODO: Write the doc.
  */
-void hxfMat4Scale(HxfMat4 * mat4, HxfVec3 * factor);
+HxfMat4 hxfMat4ScaleMatrix(HxfVec3 factor);
 
 /**
  * \brief Translation
  * 
  * TODO: Write the doc
  */
-void hxfMat4Translate(HxfMat4 * mat4, HxfVec3 * factor);
+HxfMat4 hxfMat4TranslationMatrix(HxfVec3 factor);
 
 /**
  * \brief Rotation
@@ -100,6 +100,8 @@ void hxfMat4Translate(HxfMat4 * mat4, HxfVec3 * factor);
  * 
  * TODO: Write the doc
  */
-HxfMat4 hxfMat4Rotate(HxfMat4 * mat4, float angle, HxfVec3 * position);
+HxfMat4 hxfMat4Rotate(float angle, HxfVec3 position);
 
 HxfMat4 hxfPerspectiveProjection(float near, float far, float fov, float aspect);
+
+HxfMat4 hxfViewMatrix(HxfVec3 position, HxfVec3 direction, HxfVec3 up);

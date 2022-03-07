@@ -26,8 +26,14 @@ HxfResult hxfCreateWindow(HxfWindow * window) {
     window->wm_delete_window = XInternAtom(window->xdisplay, "WM_DELETE_WINDOW", False);
     XSetWMProtocols(window->xdisplay, window->xwindow, &window->wm_delete_window, 1);
 
+    XAutoRepeatOff(window->xdisplay); // Disable auto repetition off keyboard keys
     XSelectInput(window->xdisplay, window->xwindow, KeyPressMask | KeyReleaseMask);
     XMapWindow(window->xdisplay, window->xwindow);
+
+    window->info.height = HXF_WINDOW_HEIGHT;
+    window->info.width = HXF_WINDOW_WIDTH;
+
+    window->keysState = (HxfKeysState){0};
 #endif
     return HXF_SUCCESS;
 }
@@ -51,6 +57,9 @@ int hxfHasPendingEvents(HxfWindow * window) {
 #endif
 }
 
+/**
+ * \brief Set the event data to keycode.
+ */
 static void setEventKey(HxfEvent * event, unsigned int keycode) {
     switch (keycode) {
     case 9:
@@ -59,8 +68,46 @@ static void setEventKey(HxfEvent * event, unsigned int keycode) {
     case 65:
         event->data = HXF_EVENT_KEY_SPACE;
         break;
+    case 111:
+        event->data = HXF_EVENT_KEY_ARROW_UP;
+        break;
+    case 116:
+        event->data = HXF_EVENT_KEY_ARROW_DOWN;
+        break;
+    case 113:
+        event->data = HXF_EVENT_KEY_ARROW_LEFT;
+        break;
+    case 114:
+        event->data = HXF_EVENT_KEY_ARROW_RIGHT;
+        break;
     default:
         event->data = HXF_EVENT_KEY_UNKNOWN;
+    }
+}
+
+static void setKeyState(HxfKeysState * keyState, HxfEvent * event) {
+    const unsigned int state = event->type == HXF_EVENT_TYPE_KEYPRESS ? 1 : 0;
+
+    switch (event->data)
+    {
+    case HXF_EVENT_KEY_ESCAPE:
+        keyState->escape = state;
+        break;
+    case HXF_EVENT_KEY_SPACE:
+        keyState->space = state;
+        break;
+    case HXF_EVENT_KEY_ARROW_UP:
+        keyState->arrowUp = state;
+        break;
+    case HXF_EVENT_KEY_ARROW_DOWN:
+        keyState->arrowDown = state;
+        break;
+    case HXF_EVENT_KEY_ARROW_LEFT:
+        keyState->arrowLeft = state;
+        break;
+    case HXF_EVENT_KEY_ARROW_RIGHT:
+        keyState->arrowRight = state;
+        break;
     }
 }
 
@@ -70,13 +117,15 @@ void hxfGetNextEvent(HxfWindow * window, HxfEvent * event) {
     XNextEvent(window->xdisplay, &xevent);
 
     switch (xevent.type) {
-    case KeyRelease:
-        event->type = HXF_EVENT_TYPE_KEYRELEASE;
-        setEventKey(event, xevent.xkey.keycode);
-        break;
     case KeyPress:
         event->type = HXF_EVENT_TYPE_KEYPRESS;
         setEventKey(event, xevent.xkey.keycode);
+        setKeyState(&window->keysState, event);
+        break;
+    case KeyRelease:
+        event->type = HXF_EVENT_TYPE_KEYRELEASE;
+        setEventKey(event, xevent.xkey.keycode);
+        setKeyState(&window->keysState, event);
         break;
     case ClientMessage:
         // This can happen when the window manager ask to close the window (because of alt-f4 or the close

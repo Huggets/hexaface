@@ -23,7 +23,11 @@ typedef enum HxfEventType {
 typedef enum HxfEventKey {
     HXF_EVENT_KEY_UNKNOWN, ///< Unknown key
     HXF_EVENT_KEY_ESCAPE, ///< The escape key
-    HXF_EVENT_KEY_SPACE ///< The spacebar key
+    HXF_EVENT_KEY_SPACE, ///< The spacebar key
+    HXF_EVENT_KEY_ARROW_UP,
+    HXF_EVENT_KEY_ARROW_DOWN,
+    HXF_EVENT_KEY_ARROW_LEFT,
+    HXF_EVENT_KEY_ARROW_RIGHT,
 } HxfEventKey;
 
 /**

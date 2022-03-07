@@ -8,7 +8,7 @@
 #include "../hxf.h"
 #include "../window.h"
 #include "vertex.h"
-#include "../math/algebra-linear.h"
+#include "../math/linear-algebra.h"
 
 /**
  * \brief The maximum number of frames that can be processed concurently
@@ -19,7 +19,7 @@
  * \brief The number of vertex to draw.
  */
 #define HXF_VERTEX_COUNT 8
-#define HXF_INDICE_COUNT 12
+#define HXF_INDICE_COUNT 36
 
 typedef struct HxfUniformBufferObject {
     HxfMat4 model;
@@ -81,6 +81,11 @@ typedef struct HxfVulkanInstance {
     VkImage depthImage;
     VkDeviceMemory depthImageMemory;
     VkImageView depthImageView;
+
+    float lastFrameTime; ///< Processor time the last frame took
+
+    float a; // TODO REMOVE
+    float b; // TODO REMOVE
 } HxfVulkanInstance;
 
 /**

@@ -5,7 +5,7 @@
 #pragma once
 
 #include <vulkan/vulkan.h>
-#include "../math/algebra-linear.h"
+#include "../math/linear-algebra.h"
 
 /**
  * \struct HxfVertex

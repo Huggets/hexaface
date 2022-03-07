@@ -1370,23 +1370,24 @@ static void recreateSwapchain(HxfVulkanInstance * instance) {
 }
 
 static void updateUniformBuffer(HxfVulkanInstance * instance, uint32_t currentImage) {
-    static const float inv = 1.0f / (float)CLOCKS_PER_SEC;
-    
-    float now = clock() * inv;
-
     HxfUniformBufferObject ubo = {
         HXF_MAT4_IDENTITY,
-        HXF_MAT4_IDENTITY,
-        HXF_MAT4_IDENTITY
+        // HXF_MAT4_IDENTITY,
+        hxfViewMatrix(
+            (HxfVec3){0.f, 0.f, 0.0f},
+            (HxfVec3){0.0f, 0.f, -1.f},
+            (HxfVec3){0.f, -1.f, 0.f}),
+        hxfPerspectiveProjection(0.1f, 10.f, 1.0472f, (float)instance->window.info.width / (float)instance->window.info.height),
     };
 
-    HxfVec3 tmp = {0.0f, 0.0f, 1.0f};
+    float time = clock() / (float)CLOCKS_PER_SEC * 200.0f;
 
-    // ubo.model = hxfMat4Rotate(&ubo.model, 3.1415f * 20.0f * now, &tmp);
-    // hxfMat4Translate(&ubo.view, &tmp);
-    // ubo.view = hxfPerspectiveProjection(0.01f, 10.0f, 1.57f, 1.333333f);
-    // hxfMat4Scale(&ubo.model, &tmp2);
-    ubo.model = hxfMat4Rotate(&ubo.model, 50.0f * 3.1415 * now, &tmp);
+    ubo.model = hxfMat4MulMat(ubo.model, hxfMat4ScaleMatrix((HxfVec3){0.25f, 0.25f, 0.25f}));
+    ubo.model = hxfMat4MulMat(ubo.model, hxfMat4Rotate(3.1415f * 0.25f, (HxfVec3){0.f, 0.f, 1.f}));
+    ubo.model = hxfMat4MulMat(ubo.model, hxfMat4Rotate(3.1415f * 0.25f, (HxfVec3){0.f, 1.f, 0.f}));
+    ubo.model = hxfMat4MulMat(ubo.model, hxfMat4TranslationMatrix((HxfVec3){0.f, 0.0f, -0.5f}));
+
+    ubo.view = hxfMat4MulMat(ubo.view, hxfMat4TranslationMatrix((HxfVec3){instance->b, instance->a, 0.0f}));
 
     void * data;
     vkMapMemory(instance->device, instance->uniformBuffersMemory[currentImage], 0, sizeof(ubo), 0, &data);
@@ -1616,26 +1617,33 @@ static void createDescriptorSets(HxfVulkanInstance * instance) {
 void hxfInitVulkan(HxfVulkanInstance * instance) {
     instance->currentFrame = 0;
 
-    // Initialize the vertices and the indices
-    const HxfVertex vertices[HXF_VERTEX_COUNT] = {
-        {{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}},
-        {{0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}},
-        {{0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}},
-        {{-0.5f, 0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}},
+    const HxfVec3 red = {1.0f, 0.0f, 0.0f};
+    const HxfVec3 green = {0.0f, 1.0f, 0.0f};
 
-        {{-0.8f, -0.8f, -0.2f}, {1.0f, 0.0f, 0.0f}},
-        {{0.2f, -0.8f, -0.8f}, {1.0f, 0.0f, 0.0f}},
-        {{0.2f, 0.2f, -0.8f}, {1.0f, 0.0f, 0.0f}},
-        {{-0.8f, 0.2f, -0.8f}, {1.0f, 0.0f, 0.0f}}
+    HxfVertex vertices[HXF_VERTEX_COUNT] = {
+        {{-0.5f, -0.5f, -0.5f}, red},
+        {{0.5f, -0.5f, -0.5f}, red},
+        {{0.5f, -0.5f, 0.5f}, red},
+        {{-0.5f, -0.5f, 0.5f}, red},
+
+        {{-0.5f, 0.5f, -0.5f}, green},
+        {{0.5f, 0.5f, -0.5f}, green},
+        {{0.5f, 0.5f, 0.5f}, green},
+        {{-0.5f, 0.5f, 0.5f}, green}
     };
-    for (unsigned int i = HXF_VERTEX_COUNT -1 ; i != -1; i--) {
-        instance->vertices[i] = vertices[i];
-    }
 
     const uint16_t indices[HXF_INDICE_COUNT] = {
-        0, 1, 2, 2, 3, 0,
-        4, 5, 6, 6, 7, 4
+        0, 1, 2, 2, 3, 0, // Top face
+        3, 2, 6, 6, 7, 3, // Front face
+        7, 6, 5, 5, 4, 7, // Bottom face
+        4, 5, 1, 1, 0, 4, // Back face
+        7, 4, 0, 0, 3, 7, // Left face
+        5, 6, 2, 2, 1, 5  // Right face
     };
+
+    for (unsigned int i = HXF_VERTEX_COUNT - 1; i != -1; i--) {
+        instance->vertices[i] = vertices[i];
+    }
     for (unsigned int i = HXF_INDICE_COUNT - 1; i != -1; i--) {
         instance->indices[i] = indices[i];
     }
@@ -1711,22 +1719,45 @@ void hxfDestroyVulkan(HxfVulkanInstance * instance) {
 
 void hxfRunVulkan(HxfVulkanInstance * instance) {
     int isRunning = 1;
+
+    instance->a = 0.0f;
+    instance->b = 0.0f;
+
+    const clock_t executionStart = clock();
+    clock_t lastTime = executionStart;
     while (isRunning) {
+        clock_t startTime = clock();
+        instance->lastFrameTime = (startTime - lastTime) / (float)CLOCKS_PER_SEC;
+        lastTime = startTime;
+
         // Read all the events
         while (hxfHasPendingEvents(&instance->window)) {
             HxfEvent event;
             hxfGetNextEvent(&instance->window, &event);
 
             if (event.type == HXF_EVENT_TYPE_KEYPRESS) {
-                if (event.data == HXF_EVENT_KEY_ESCAPE) {
+                switch(event.data) {
+                case HXF_EVENT_KEY_ESCAPE:
                     isRunning = 0;
+                    break;
                 }
-            }
-            else if (event.type == HXF_EVENT_TYPE_KEYRELEASE) {
             }
             else if (event.type == HXF_EVENT_TYPE_WINDOW_SHOULD_CLOSE) {
                 isRunning = 0;
             }
+        }
+
+        if (instance->window.keysState.arrowUp) {
+            instance->a -= instance->lastFrameTime * 50.f;
+        }
+        if (instance->window.keysState.arrowDown) {
+            instance->a += instance->lastFrameTime * 50.f;
+        }
+        if (instance->window.keysState.arrowLeft) {
+            instance->b -= instance->lastFrameTime * 50.f;
+        }
+        if (instance->window.keysState.arrowRight) {
+            instance->b += instance->lastFrameTime * 50.f;
         }
 
         drawFrame(instance);

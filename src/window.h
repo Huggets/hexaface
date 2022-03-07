@@ -1,6 +1,6 @@
 /**
  * \file window.h
- * \brief Plateform independant code for window.
+ * \brief Plateform independant code for window and input.
  */
 #pragma once
 
@@ -13,16 +13,31 @@
 #include <vulkan/vulkan.h>
 
 /**
- * \def HXF_WINDOW_HEIGHT
- * \brief The height of the window.
- */
-#define HXF_WINDOW_HEIGHT 600
-
-/**
  * \def HXF_WINDOW_WIDTH
  * \brief The width of the window.
  */
 #define HXF_WINDOW_WIDTH 800
+
+/**
+ * \def HXF_WINDOW_HEIGHT
+ * \brief The height of the window.
+ */
+#define HXF_WINDOW_HEIGHT 800
+
+/**
+ * \struct HxfKeysState
+ * \brief Information about the state of keys.
+ * 
+ * The member variable is set to 0 when the key is released and to 1 when the key is pressed.
+ */
+typedef struct HxfKeysState {
+    int escape; ///< Escape keys
+    int space; ///< Spacebar
+    int arrowUp; ///< Up arrow
+    int arrowDown; ///< Down arrow
+    int arrowLeft;
+    int arrowRight;
+} HxfKeysState;
 
 /**
  * Information about a window.
@@ -36,7 +51,9 @@ typedef struct HxfWindowInformation {
  * \struct HxfWindow
  * \brief A window that can be used to draw things on.
  * 
- * The members must not be accessed or modified.
+ * The members must not be modified.
+ * 
+ * Only info and keysState can be accessed.
  */
 typedef struct HxfWindow {
 #if defined(HXF_WINDOW_XLIB)
@@ -45,8 +62,9 @@ typedef struct HxfWindow {
     int xscreenNumber;
     Atom wm_protocols;
     Atom wm_delete_window;
-    HxfWindowInformation info;
 #endif
+    HxfWindowInformation info; ///< Can be accessed
+    HxfKeysState keysState; ///< The state of the keys
 } HxfWindow;
 
 /**
