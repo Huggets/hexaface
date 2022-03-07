@@ -21,6 +21,8 @@
 #define HXF_VERTEX_COUNT 8
 #define HXF_INDICE_COUNT 36
 
+#define HXF_INSTANCE_COUNT 3
+
 typedef struct HxfUniformBufferObject {
     HxfMat4 model;
     HxfMat4 view;
@@ -86,6 +88,10 @@ typedef struct HxfVulkanInstance {
 
     float a; // TODO REMOVE
     float b; // TODO REMOVE
+
+    VkBuffer instanceBuffer; // Buffer that old the vertex offset for each instance
+    VkDeviceMemory instanceBufferMemory;
+    HxfVertexInstanceData instanceData[HXF_INSTANCE_COUNT]; // TODO Rename
 } HxfVulkanInstance;
 
 /**

@@ -934,8 +934,8 @@ static void createGraphicsPipeline(HxfVulkanInstance * instance) {
 
     if (
         readFile("../data/shaders/vert.spv", &vertShaderCode, &vertShaderCodeSize) == HXF_ERROR ||
-        readFile("../data/shaders/frag.spv", &fragShaderCode, &fragShaderCodeSize)
-        ) {
+        readFile("../data/shaders/frag.spv", &fragShaderCode, &fragShaderCodeSize) == HXF_ERROR
+    ) {
         HXF_MSG_ERROR("failed to read shaders file in data/shaders/");
         exit(EXIT_FAILURE);
     };
@@ -969,17 +969,16 @@ static void createGraphicsPipeline(HxfVulkanInstance * instance) {
         fragShaderStageInfo
     };
 
-    VkVertexInputBindingDescription bindingDescription = hxfVertexGetBindingDescription();
-    VkVertexInputAttributeDescription * attributeDescriptions = hxfVertexGetAttributeDescriptions(); // Array of size 2
-    const int attributeDescriptionSize = 2;
+    VkVertexInputBindingDescription * bindingDescriptions = hxfVertexGetBindingDescriptions();
+    VkVertexInputAttributeDescription * attributeDescriptions = hxfVertexGetAttributeDescriptions();
 
     VkPipelineVertexInputStateCreateInfo vertexInputInfo;
     vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
     vertexInputInfo.pNext = NULL;
     vertexInputInfo.flags = 0;
-    vertexInputInfo.vertexBindingDescriptionCount = 1;
-    vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
-    vertexInputInfo.vertexAttributeDescriptionCount = attributeDescriptionSize;
+    vertexInputInfo.vertexBindingDescriptionCount = HXF_VERTEX_BINDING_DESCRIPTION_COUNT;
+    vertexInputInfo.pVertexBindingDescriptions = bindingDescriptions;
+    vertexInputInfo.vertexAttributeDescriptionCount = HXF_VERTEX_ATTRIBUTE_DESCRIPTION_COUNT;
     vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions;
 
     VkPipelineInputAssemblyStateCreateInfo inputAssembly;
@@ -1108,6 +1107,7 @@ static void createGraphicsPipeline(HxfVulkanInstance * instance) {
     }
 
     free(attributeDescriptions);
+    free(bindingDescriptions);
 
     vkDestroyShaderModule(instance->device, fragShaderModule, NULL);
     vkDestroyShaderModule(instance->device, vertShaderModule, NULL);
@@ -1272,14 +1272,14 @@ static void recordCommandBuffer(HxfVulkanInstance * instance, VkCommandBuffer co
 
     vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, instance->graphicsPipeline);
 
-    VkBuffer vertexBuffers[] = { instance->vertexBuffer };
-    VkDeviceSize offsets[] = { 0 };
-    vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
+    VkBuffer vertexBuffers[] = { instance->vertexBuffer, instance->instanceBuffer };
+    VkDeviceSize offsets[] = { 0, 0 };
+    vkCmdBindVertexBuffers(commandBuffer, 0, 2, vertexBuffers, offsets);
     vkCmdBindIndexBuffer(commandBuffer, instance->indexBuffer, 0, VK_INDEX_TYPE_UINT16);
     vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, instance->pipelineLayout, 0, 1,
         &instance->descriptorSets[instance->currentFrame], 0, NULL);
 
-    vkCmdDrawIndexed(commandBuffer, (uint32_t)HXF_INDICE_COUNT, 1, 0, 0, 0);
+    vkCmdDrawIndexed(commandBuffer, (uint32_t)HXF_INDICE_COUNT, HXF_INSTANCE_COUNT, 0, 0, 0);
 
     vkCmdEndRenderPass(commandBuffer);
 
@@ -1468,6 +1468,7 @@ static void createVertexBuffer(HxfVulkanInstance * instance) {
 
     VkBuffer stagingBuffer;
     VkDeviceMemory stagingBufferMemory;
+
     createBuffer(
         instance,
         bufferSize,
@@ -1488,6 +1489,32 @@ static void createVertexBuffer(HxfVulkanInstance * instance) {
         &instance->vertexBuffer, &instance->vertexBufferMemory);
 
     copyBuffer(instance, stagingBuffer, instance->vertexBuffer, bufferSize);
+
+    vkDestroyBuffer(instance->device, stagingBuffer, NULL);
+    vkFreeMemory(instance->device, stagingBufferMemory, NULL);
+
+    // Creating instance data
+    bufferSize = sizeof(HxfVertexInstanceData) * HXF_INSTANCE_COUNT;
+
+    createBuffer(
+        instance,
+        bufferSize,
+        VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+        &stagingBuffer, &stagingBufferMemory);
+
+    vkMapMemory(instance->device, stagingBufferMemory, 0, bufferSize, 0, &data);
+    memcpy(data, instance->instanceData, (size_t)bufferSize);
+    vkUnmapMemory(instance->device, stagingBufferMemory);
+
+    createBuffer(
+        instance,
+        bufferSize,
+        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+        &instance->instanceBuffer, &instance->instanceBufferMemory);
+
+    copyBuffer(instance, stagingBuffer, instance->instanceBuffer, bufferSize);
 
     vkDestroyBuffer(instance->device, stagingBuffer, NULL);
     vkFreeMemory(instance->device, stagingBufferMemory, NULL);
@@ -1619,7 +1646,7 @@ void hxfInitVulkan(HxfVulkanInstance * instance) {
     const HxfVec3 red = {1.0f, 0.0f, 0.0f};
     const HxfVec3 green = {0.0f, 1.0f, 0.0f};
 
-    HxfVertex vertices[HXF_VERTEX_COUNT] = {
+    const HxfVertex vertices[HXF_VERTEX_COUNT] = {
         {{-0.5f, -0.5f, -0.5f}, red},
         {{0.5f, -0.5f, -0.5f}, red},
         {{0.5f, -0.5f, 0.5f}, red},
@@ -1640,11 +1667,20 @@ void hxfInitVulkan(HxfVulkanInstance * instance) {
         5, 6, 2, 2, 1, 5  // Right face
     };
 
+    HxfVertexInstanceData instanceData[HXF_INSTANCE_COUNT] = {0};
+    for (int i = 0; i != HXF_INSTANCE_COUNT; i++) {
+        instanceData[i].offset.x = i;
+    }
+
+
     for (unsigned int i = HXF_VERTEX_COUNT - 1; i != -1; i--) {
         instance->vertices[i] = vertices[i];
     }
     for (unsigned int i = HXF_INDICE_COUNT - 1; i != -1; i--) {
         instance->indices[i] = indices[i];
+    }
+    for (unsigned int i = HXF_INSTANCE_COUNT - 1; i != -1; i--) {
+        instance->instanceData[i] = instanceData[i];
     }
 
     if (hxfCreateWindow(&instance->window) == HXF_WINDOW_CREATION_ERROR) {
@@ -1694,6 +1730,9 @@ void hxfDestroyVulkan(HxfVulkanInstance * instance) {
 
     vkDestroyBuffer(instance->device, instance->indexBuffer, NULL);
     vkFreeMemory(instance->device, instance->indexBufferMemory, NULL);
+
+    vkDestroyBuffer(instance->device, instance->instanceBuffer, NULL);
+    vkFreeMemory(instance->device, instance->instanceBufferMemory, NULL);
     vkDestroyBuffer(instance->device, instance->vertexBuffer, NULL);
     vkFreeMemory(instance->device, instance->vertexBufferMemory, NULL);
 
@@ -1747,16 +1786,16 @@ void hxfRunVulkan(HxfVulkanInstance * instance) {
         }
 
         if (instance->window.keysState.arrowUp) {
-            instance->a -= instance->lastFrameTime * 50.f;
-        }
-        if (instance->window.keysState.arrowDown) {
             instance->a += instance->lastFrameTime * 50.f;
         }
+        if (instance->window.keysState.arrowDown) {
+            instance->a -= instance->lastFrameTime * 50.f;
+        }
         if (instance->window.keysState.arrowLeft) {
-            instance->b -= instance->lastFrameTime * 50.f;
+            instance->b += instance->lastFrameTime * 50.f;
         }
         if (instance->window.keysState.arrowRight) {
-            instance->b += instance->lastFrameTime * 50.f;
+            instance->b -= instance->lastFrameTime * 50.f;
         }
 
         drawFrame(instance);
