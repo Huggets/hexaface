@@ -28,6 +28,10 @@ typedef enum HxfEventKey {
     HXF_EVENT_KEY_ARROW_DOWN,
     HXF_EVENT_KEY_ARROW_LEFT,
     HXF_EVENT_KEY_ARROW_RIGHT,
+    HXF_EVENT_KEY_W,
+    HXF_EVENT_KEY_Q,
+    HXF_EVENT_KEY_S,
+    HXF_EVENT_KEY_D,
 } HxfEventKey;
 
 /**

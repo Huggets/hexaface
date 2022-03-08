@@ -77,6 +77,8 @@ float hxfVec3Dot(HxfVec3 a, HxfVec3 b);
 
 HxfVec3 hxfVec3Normalize(HxfVec3 a);
 
+HxfVec3 hxfVec3Add(HxfVec3 a, HxfVec3 b);
+
 /* TRANSFORMATION */
 
 /**

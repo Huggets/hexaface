@@ -66,6 +66,18 @@ static void setEventKey(HxfEvent * event, unsigned int keycode) {
     case 9:
         event->data = HXF_EVENT_KEY_ESCAPE;
         break;
+    case 25:
+        event->data = HXF_EVENT_KEY_W;
+        break;
+    case 38:
+        event->data = HXF_EVENT_KEY_Q;
+        break;
+    case 39:
+        event->data = HXF_EVENT_KEY_S;
+        break;
+    case 40:
+        event->data = HXF_EVENT_KEY_D;
+        break;
     case 65:
         event->data = HXF_EVENT_KEY_SPACE;
         break;
@@ -108,6 +120,18 @@ static void setKeyState(HxfKeysState * keyState, HxfEvent * event) {
         break;
     case HXF_EVENT_KEY_ARROW_RIGHT:
         keyState->arrowRight = state;
+        break;
+    case HXF_EVENT_KEY_W:
+        keyState->w = state;
+        break;
+    case HXF_EVENT_KEY_Q:
+        keyState->q = state;
+        break;
+    case HXF_EVENT_KEY_S:
+        keyState->s = state;
+        break;
+    case HXF_EVENT_KEY_D:
+        keyState->d = state;
         break;
     }
 }

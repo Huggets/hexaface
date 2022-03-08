@@ -63,6 +63,14 @@ HxfVec3 hxfVec3Normalize(HxfVec3 a) {
     return a;
 }
 
+HxfVec3 hxfVec3Add(HxfVec3 a, HxfVec3 b) {
+    a.x += b.x;
+    a.y += b.y;
+    a.z += b.z;
+    return a;
+}
+
+
 /* TRANSFORMATION */
 
 HxfMat4 hxfMat4ScaleMatrix(HxfVec3 factor) {

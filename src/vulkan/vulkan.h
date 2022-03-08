@@ -86,8 +86,10 @@ typedef struct HxfVulkanInstance {
 
     float lastFrameTime; ///< Processor time the last frame took
 
-    float a; // TODO REMOVE
-    float b; // TODO REMOVE
+    float pitch; // TODO REMOVE
+    float yaw; // TODO REMOVE
+    HxfVec3 pos;
+    HxfVec3 front;
 
     VkBuffer instanceBuffer; // Buffer that old the vertex offset for each instance
     VkDeviceMemory instanceBufferMemory;

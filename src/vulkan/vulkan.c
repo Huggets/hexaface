@@ -4,6 +4,8 @@
 #include <string.h>
 #include <time.h>
 
+#include <math.h> // TODO useful??
+
 /**
  * \struct QueueFamilyIndices
  * \brief Used to find a suitable GPU that has the required queue families.
@@ -1372,21 +1374,24 @@ static void recreateSwapchain(HxfVulkanInstance * instance) {
 static void updateUniformBuffer(HxfVulkanInstance * instance, uint32_t currentImage) {
     hxfUpdateWindowInformation(&instance->window); // The latest information on the width and height
 
+    HxfVec3 direction = {
+        cosf(instance->yaw) * cosf(instance->pitch),
+        sin(instance->pitch),
+        sin(instance->yaw) * cos(instance->pitch)
+    };
+    instance->front = hxfVec3Normalize(direction);
+
     HxfUniformBufferObject ubo = {
         HXF_MAT4_IDENTITY,
         hxfViewMatrix(
-            (HxfVec3){0.f, 0.f, 0.0f},
-            (HxfVec3){0.0f, 0.f, -1.f},
+            instance->pos,
+            instance->front,
             (HxfVec3){0.f, -1.f, 0.f}),
         hxfPerspectiveProjection(0.1f, 10.f, 1.0472f, (float)instance->window.info.width / (float)instance->window.info.height)
     };
 
     ubo.model = hxfMat4MulMat(ubo.model, hxfMat4ScaleMatrix((HxfVec3){0.25f, 0.25f, 0.25f}));
-    ubo.model = hxfMat4MulMat(ubo.model, hxfMat4Rotate(3.1415f * 0.25f, (HxfVec3){0.f, 0.f, 1.f}));
-    ubo.model = hxfMat4MulMat(ubo.model, hxfMat4Rotate(3.1415f * 0.25f, (HxfVec3){0.f, 1.f, 0.f}));
     ubo.model = hxfMat4MulMat(ubo.model, hxfMat4TranslationMatrix((HxfVec3){0.f, 0.0f, -0.5f}));
-
-    ubo.view = hxfMat4MulMat(ubo.view, hxfMat4TranslationMatrix((HxfVec3){instance->b, instance->a, 0.0f}));
 
     void * data;
     vkMapMemory(instance->device, instance->uniformBuffersMemory[currentImage], 0, sizeof(ubo), 0, &data);
@@ -1758,8 +1763,10 @@ void hxfDestroyVulkan(HxfVulkanInstance * instance) {
 void hxfRunVulkan(HxfVulkanInstance * instance) {
     int isRunning = 1;
 
-    instance->a = 0.0f;
-    instance->b = 0.0f;
+    instance->pitch = 0.0f;
+    instance->yaw = -1.57079632f;
+    instance->pos = (HxfVec3){0};
+    instance->front = (HxfVec3){0};
 
     const clock_t executionStart = clock();
     clock_t lastTime = executionStart;
@@ -1786,16 +1793,57 @@ void hxfRunVulkan(HxfVulkanInstance * instance) {
         }
 
         if (instance->window.keysState.arrowUp) {
-            instance->a += instance->lastFrameTime * 50.f;
+            instance->pitch -= instance->lastFrameTime * 150.f;
         }
         if (instance->window.keysState.arrowDown) {
-            instance->a -= instance->lastFrameTime * 50.f;
+            instance->pitch += instance->lastFrameTime * 150.f;
         }
         if (instance->window.keysState.arrowLeft) {
-            instance->b += instance->lastFrameTime * 50.f;
+            instance->yaw += instance->lastFrameTime * 150.f;
         }
         if (instance->window.keysState.arrowRight) {
-            instance->b -= instance->lastFrameTime * 50.f;
+            instance->yaw -= instance->lastFrameTime * 150.f;
+        }
+
+        if (instance->window.keysState.w) {
+            HxfVec3 tmp = instance->front;
+            tmp.y = 0.0f;
+            tmp = hxfVec3Normalize(tmp);
+            float inc = instance->lastFrameTime * 50.0f;
+            tmp.x *= inc;
+            tmp.y *= inc;
+            tmp.z *= inc;
+
+            instance->pos = hxfVec3Add(instance->pos, tmp);
+        }
+        if (instance->window.keysState.s) {
+            HxfVec3 tmp = instance->front;
+            tmp.y = 0.0f;
+            tmp = hxfVec3Normalize(tmp);
+            float inc = instance->lastFrameTime * 50.0f;
+            tmp.x *= -inc;
+            tmp.y *= -inc;
+            tmp.z *= -inc;
+
+            instance->pos = hxfVec3Add(instance->pos, tmp);
+        }
+        if (instance->window.keysState.q) {
+            HxfVec3 tmp = hxfVec3Normalize(hxfVec3Cross(instance->front, (HxfVec3){0.f, -1.f, 0.f}));
+            float inc = instance->lastFrameTime * 50.0f;
+            tmp.x *= -inc;
+            tmp.y *= -inc;
+            tmp.z *= -inc;
+
+            instance->pos = hxfVec3Add(instance->pos, tmp);
+        }
+        if (instance->window.keysState.d) {
+            HxfVec3 tmp = hxfVec3Normalize(hxfVec3Cross(instance->front, (HxfVec3){0.f, -1.f, 0.f}));
+            float inc = instance->lastFrameTime * 50.0f;
+            tmp.x *= inc;
+            tmp.y *= inc;
+            tmp.z *= inc;
+
+            instance->pos = hxfVec3Add(instance->pos, tmp);
         }
 
         drawFrame(instance);

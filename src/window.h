@@ -37,6 +37,10 @@ typedef struct HxfKeysState {
     int arrowDown; ///< Down arrow
     int arrowLeft;
     int arrowRight;
+    int w;
+    int q;
+    int s;
+    int d;
 } HxfKeysState;
 
 /**
