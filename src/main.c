@@ -1,5 +1,5 @@
 #include <stdlib.h>
-#include "vulkan/vulkan.h"
+#include "graphics/vulkan.h"
 
 int main(int argc, char ** argv) {
     HxfVulkanInstance instance;

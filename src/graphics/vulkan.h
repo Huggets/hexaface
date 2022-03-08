@@ -21,7 +21,7 @@
 #define HXF_VERTEX_COUNT 8
 #define HXF_INDICE_COUNT 36
 
-#define HXF_INSTANCE_COUNT 3
+#define HXF_INSTANCE_COUNT 5
 
 typedef struct HxfUniformBufferObject {
     HxfMat4 model;

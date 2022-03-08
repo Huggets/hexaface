@@ -15,6 +15,6 @@ layout(binding = 0) uniform UniformBufferObject {
 
 void main() {
     gl_Position = ubo.proj * ubo.view * ubo.model * vec4(inPosition + inOffset, 1.0);
-    float r = gl_InstanceIndex * 1.0f / 3.0f;
-    fragColor = vec3(r, 0.1f, 0.0f);
+    float r = gl_InstanceIndex * (1.0f / 10.0f);
+    fragColor = vec3(r, 0.1f, r);
 }

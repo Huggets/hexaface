@@ -16,8 +16,8 @@ add_executable(
     src/main.c
     src/window.c
     src/hxf.c
-    src/vulkan/vulkan.c
-    src/vulkan/vertex.c
+    src/graphics/vulkan.c
+    src/graphics/vertex.c
     src/math/linear-algebra.c
 )
 

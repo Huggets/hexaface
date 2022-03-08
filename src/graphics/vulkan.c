@@ -6,6 +6,14 @@
 
 #include <math.h> // TODO useful??
 
+#ifdef HXF_VALIDATION_LAYERS
+/**
+ * \def VALIDATION_LAYER_COUNT
+ * \brief The number of validation layers needed.
+ */
+#define VALIDATION_LAYER_COUNT 1
+#endif
+
 /**
  * \struct QueueFamilyIndices
  * \brief Used to find a suitable GPU that has the required queue families.
@@ -19,6 +27,7 @@ typedef struct QueueFamilyIndices {
 
 /**
  * \struct SwapchainSupportDetails
+ * \brief Describe informations about a swapchain.
  */
 typedef struct SwapchainSupportDetails {
     VkSurfaceCapabilitiesKHR capabilities;
@@ -29,17 +38,87 @@ typedef struct SwapchainSupportDetails {
 } SwapchainSupportDetails;
 
 #ifdef HXF_VALIDATION_LAYERS
-#define VALIDATION_LAYER_COUNT 1
-
+/**
+ * \brief The list of the validation layers needed.
+ */
 static const char * validationLayers[VALIDATION_LAYER_COUNT] = {
     "VK_LAYER_KHRONOS_validation"
 };
 #endif
 
+/**
+ * \brief The number of enabled device extensions.
+ */
 static const int deviceExtensionCount = 1;
-static const char * deviceExtensions[1] = { VK_KHR_SWAPCHAIN_EXTENSION_NAME }; ///< The extensions needed by the device
 
-// static const deviceExtensions[]
+/**
+ * \brief The needed device extensions.
+ */
+static const char * deviceExtensions[1] = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
+
+#ifdef HXF_VALIDATION_LAYERS
+static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
+    VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+    VkDebugUtilsMessageTypeFlagsEXT messageType,
+    const VkDebugUtilsMessengerCallbackDataEXT * pCallbackData,
+    void * pUserData
+) {
+    fprintf(stderr, "validation layer: %s\n", pCallbackData->pMessage);
+
+    return VK_FALSE;
+}
+
+static VkResult createDebugUtilsMessengerEXT(
+    VkInstance instance,
+    const VkDebugUtilsMessengerCreateInfoEXT * pCreateInfo,
+    const VkAllocationCallbacks * pAllocator,
+    VkDebugUtilsMessengerEXT * pDebugMessenger
+) {
+    PFN_vkCreateDebugUtilsMessengerEXT func =
+        (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
+    if (func != NULL) {
+        return func(instance, pCreateInfo, pAllocator, pDebugMessenger);
+    } else {
+        return VK_ERROR_EXTENSION_NOT_PRESENT;
+    }
+}
+
+static void destroyDebugUtilsMessengerEXT(
+    VkInstance instance,
+    VkDebugUtilsMessengerEXT debugMessenger,
+    const VkAllocationCallbacks * pAllocator
+) {
+    PFN_vkDestroyDebugUtilsMessengerEXT func =
+        (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
+    if (func != NULL) {
+        func(instance, debugMessenger, pAllocator);
+    }
+}
+
+static void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT * createInfo) {
+    createInfo->sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+    createInfo->pNext = NULL;
+    createInfo->flags = 0;
+    createInfo->messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
+        VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
+        VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+    createInfo->messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
+        VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
+        VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+    createInfo->pfnUserCallback = debugCallback;
+    createInfo->pUserData = NULL;
+}
+
+static void setupDebugMessenger(HxfVulkanInstance * instance) {
+    VkDebugUtilsMessengerCreateInfoEXT createInfo;
+    populateDebugMessengerCreateInfo(&createInfo);
+
+    if (createDebugUtilsMessengerEXT(instance->instance, &createInfo, NULL, &instance->debugMessenger)) {
+        HXF_MSG_ERROR("failed to set up debug messenger");
+        exit(EXIT_FAILURE);
+    }
+}
+#endif
 
 /**
  * \return the version of vulkan supported by the implementation.
@@ -156,70 +235,6 @@ static void getRequiredExtensions(char *** extensions, uint32_t * count) {
     *count = windowExtensionCount;
 #endif
 }
-
-#ifdef HXF_VALIDATION_LAYERS
-static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
-    VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
-    VkDebugUtilsMessageTypeFlagsEXT messageType,
-    const VkDebugUtilsMessengerCallbackDataEXT * pCallbackData,
-    void * pUserData
-) {
-    fprintf(stderr, "validation layer: %s\n", pCallbackData->pMessage);
-
-    return VK_FALSE;
-}
-
-static VkResult createDebugUtilsMessengerEXT(
-    VkInstance instance,
-    const VkDebugUtilsMessengerCreateInfoEXT * pCreateInfo,
-    const VkAllocationCallbacks * pAllocator,
-    VkDebugUtilsMessengerEXT * pDebugMessenger
-) {
-    PFN_vkCreateDebugUtilsMessengerEXT func =
-        (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
-    if (func != NULL) {
-        return func(instance, pCreateInfo, pAllocator, pDebugMessenger);
-    } else {
-        return VK_ERROR_EXTENSION_NOT_PRESENT;
-    }
-}
-
-static void destroyDebugUtilsMessengerEXT(
-    VkInstance instance,
-    VkDebugUtilsMessengerEXT debugMessenger,
-    const VkAllocationCallbacks * pAllocator
-) {
-    PFN_vkDestroyDebugUtilsMessengerEXT func =
-        (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
-    if (func != NULL) {
-        func(instance, debugMessenger, pAllocator);
-    }
-}
-
-static void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT * createInfo) {
-    createInfo->sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
-    createInfo->pNext = NULL;
-    createInfo->flags = 0;
-    createInfo->messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
-        VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
-        VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
-    createInfo->messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
-        VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
-        VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
-    createInfo->pfnUserCallback = debugCallback;
-    createInfo->pUserData = NULL;
-}
-
-static void setupDebugMessenger(HxfVulkanInstance * instance) {
-    VkDebugUtilsMessengerCreateInfoEXT createInfo;
-    populateDebugMessengerCreateInfo(&createInfo);
-
-    if (createDebugUtilsMessengerEXT(instance->instance, &createInfo, NULL, &instance->debugMessenger)) {
-        HXF_MSG_ERROR("failed to set up debug messenger");
-        exit(EXIT_FAILURE);
-    }
-}
-#endif
 
 static uint32_t findMemoryType(HxfVulkanInstance * instance, uint32_t typeFilter, VkMemoryPropertyFlags properties) {
     VkPhysicalDeviceMemoryProperties memProperties;

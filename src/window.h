@@ -35,8 +35,8 @@ typedef struct HxfKeysState {
     int space; ///< Spacebar
     int arrowUp; ///< Up arrow
     int arrowDown; ///< Down arrow
-    int arrowLeft;
-    int arrowRight;
+    int arrowLeft; ///< Left arrow
+    int arrowRight; ///< Right arrow
     int w;
     int q;
     int s;
