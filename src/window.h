@@ -8,6 +8,10 @@
 #include "X11/Xlib.h"
 #endif
 
+#if defined(HXF_WINDOW_XLIB)
+#define HXF_WINDOW_REQUIRED_VULKAN_EXTENSIONS_COUNT 2
+#endif
+
 #include "event.h"
 #include "hxf.h"
 #include <vulkan/vulkan.h>
@@ -102,13 +106,17 @@ void hxfGetNextEvent(HxfWindow * window, HxfEvent * event);
 
 /**
  * \brief Get the extensions needed by vulkan to work with windows.
- * \param extensions A pointer to an array of char strings containing the required extensions.
- * \param count The size of the array.
+ * 
+ * The array extensions will be set with the extension names.
+ * 
+ * The number of required extensions is define by the HXF_WINDOW_REQUIRED_VULKAN_EXTENSIONS_COUNT macro
+ * 
+ * \param extensions A pointer to an array of char strings that will be set with the extensions name.
  * \return HXF_SUCCESS.
  *
  * Note: extensions must be freed when it is not needed anymore.
  */
-HxfResult hxfGetRequiredWindowVulkanExtension(char *** extensions, u_int32_t * count);
+HxfResult hxfGetRequiredWindowVulkanExtension(char *** extensions);
 
 /**
  * \brief Create a Vulkan surface from the window.

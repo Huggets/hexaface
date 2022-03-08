@@ -14,6 +14,8 @@
 #define VALIDATION_LAYER_COUNT 1
 #endif
 
+
+
 /**
  * \struct QueueFamilyIndices
  * \brief Used to find a suitable GPU that has the required queue families.
@@ -142,17 +144,34 @@ static uint32_t getInstanceVersion() {
  * If that is not the case, then it prints the incompatible extensions and exits the program.
  */
 static void checkExtensionSupport(char ** extensions, int count) {
-    uint32_t instanceExtensionCount;
-    vkEnumerateInstanceExtensionProperties(NULL, &instanceExtensionCount, NULL);
-    VkExtensionProperties * instanceExtensions = hxfMalloc(sizeof(VkExtensionProperties) * instanceExtensionCount);
-    vkEnumerateInstanceExtensionProperties(NULL, &instanceExtensionCount, instanceExtensions);
+#ifdef HXF_VALIDATION_LAYERS
+    const char validationLayerName[] = "VK_LAYER_KHRONOS_validation";
+    uint32_t globalExtensionCount;
+    vkEnumerateInstanceExtensionProperties(NULL, &globalExtensionCount, NULL);
+    uint32_t validationLayersExtensionCount;
+    vkEnumerateInstanceExtensionProperties(validationLayerName, &validationLayersExtensionCount, NULL);
+    uint32_t extensionCount = globalExtensionCount + validationLayersExtensionCount;
+
+    VkExtensionProperties * instanceExtensions =
+        hxfMalloc(sizeof(VkExtensionProperties) * extensionCount);
+
+    vkEnumerateInstanceExtensionProperties(NULL, &globalExtensionCount, instanceExtensions);
+    vkEnumerateInstanceExtensionProperties(validationLayerName, &validationLayersExtensionCount,
+        instanceExtensions + globalExtensionCount);
+#else
+    uint32_t extensionCount;
+    vkEnumerateInstanceExtensionProperties(NULL, &extensionCount, NULL);
+
+    VkExtensionProperties * instanceExtensions = hxfMalloc(sizeof(VkExtensionProperties) * extensionCount);
+    vkEnumerateInstanceExtensionProperties(NULL, &extensionCount, instanceExtensions);
+#endif
 
     int unsupported = 0;
     int i = 0;
     while (i != count) {
         int extensionFound = 0;
         int j = 0;
-        while (j != instanceExtensionCount && !extensionFound) {
+        while (j != extensionCount && !extensionFound) {
             if (strcmp(extensions[i], instanceExtensions[j].extensionName) == 0) {
                 extensionFound = 1;
             }
@@ -216,23 +235,18 @@ static void checkValidationLayerSupport(const char * validationLayers[], int cou
  *
  * Note: extensions need to be freed when not needed anymore.
  */
-static void getRequiredExtensions(char *** extensions, uint32_t * count) {
-    uint32_t windowExtensionCount;
-    char ** windowExtensions;
-    hxfGetRequiredWindowVulkanExtension(&windowExtensions, &windowExtensionCount);
-
-    // If we use the validation layers we need to add VK_EXT_DEBUG_UTILS_EXTENSION_NAME
+static void getRequiredExtensions(char *** extensions, size_t * count) {
 #ifdef HXF_VALIDATION_LAYERS
-    * count = windowExtensionCount + 1;
-    *extensions = realloc(windowExtensions, sizeof(char *) * *count);
-    if (extensions == NULL) {
-        HXF_MSG_ERROR("Could not reallocate memory");
-        exit(EXIT_FAILURE);
-    }
-    (*extensions)[windowExtensionCount] = VK_EXT_DEBUG_UTILS_EXTENSION_NAME;
+    *count = HXF_WINDOW_REQUIRED_VULKAN_EXTENSIONS_COUNT + 2;
+    *extensions = malloc(sizeof(char *) * (HXF_WINDOW_REQUIRED_VULKAN_EXTENSIONS_COUNT + 2));
+    hxfGetRequiredWindowVulkanExtension(extensions);
+
+    (*extensions)[*count - 2] = VK_EXT_DEBUG_UTILS_EXTENSION_NAME;
+    (*extensions)[*count - 1] = VK_EXT_VALIDATION_FEATURES_EXTENSION_NAME;
 #else
-    * extensions = windowExtensions;
-    *count = windowExtensionCount;
+    *count = HXF_WINDOW_REQUIRED_VULKAN_EXTENSIONS_COUNT;
+    *extensions = malloc(sizeof(char) * HXF_WINDOW_REQUIRED_VULKAN_EXTENSIONS_COUNT);
+    hxfGetRequiredWindowVulkanExtension(extensions);
 #endif
 }
 
@@ -574,9 +588,9 @@ static void createInstance(HxfVulkanInstance * instance) {
 #endif
 
     // Get the required extensions
-    uint32_t enabledExtensionCount;
+    int enabledExtensionCount;
     char ** enabledExtensions;
-    getRequiredExtensions(&enabledExtensions, &enabledExtensionCount);
+    getRequiredExtensions(&enabledExtensions, (size_t *)&enabledExtensionCount);
 
     instanceInfo.enabledExtensionCount = enabledExtensionCount;
     instanceInfo.ppEnabledExtensionNames = (const char * const *)enabledExtensions;

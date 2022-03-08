@@ -162,16 +162,10 @@ void hxfGetNextEvent(HxfWindow * window, HxfEvent * event) {
 #endif
 }
 
-HxfResult hxfGetRequiredWindowVulkanExtension(char *** extensions, u_int32_t * count) {
+HxfResult hxfGetRequiredWindowVulkanExtension(char *** extensions) {
 #if defined(HXF_WINDOW_XLIB)
-    *count = 2;
-    *extensions = hxfMalloc(sizeof(char *) * (*count));
-
     (*extensions)[0] = "VK_KHR_surface";
     (*extensions)[1] = "VK_KHR_xlib_surface";
-#else
-    (*extensions) = NULL;
-    count = 0;
 #endif
 
     return HXF_SUCCESS;
