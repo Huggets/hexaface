@@ -1289,10 +1289,14 @@ static void recordCommandBuffer(HxfVulkanInstance * instance, VkCommandBuffer co
 
     vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, instance->graphicsPipeline);
 
-    VkBuffer vertexBuffers[] = { instance->vertexBuffer, instance->instanceBuffer };
-    VkDeviceSize offsets[] = { 0, 0 };
-    vkCmdBindVertexBuffers(commandBuffer, 0, 2, vertexBuffers, offsets);
-    vkCmdBindIndexBuffer(commandBuffer, instance->indexBuffer, 0, VK_INDEX_TYPE_UINT16);
+    const VkDeviceSize offsetsBinding0[] = { 0 };
+    const VkDeviceSize offsetsBinding1[] = { sizeof(HxfVertex) * HXF_VERTEX_COUNT };
+    const VkDeviceSize indexOffset =
+        sizeof(HxfVertex) * HXF_VERTEX_COUNT + sizeof(HxfVertexInstanceData) * HXF_INSTANCE_COUNT;
+    vkCmdBindVertexBuffers(commandBuffer, 0, 1, &instance->buffer, offsetsBinding0);
+    vkCmdBindVertexBuffers(commandBuffer, 1, 1, &instance->buffer, offsetsBinding1);
+    vkCmdBindIndexBuffer(commandBuffer, instance->buffer, indexOffset, VK_INDEX_TYPE_UINT32);
+
     vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, instance->pipelineLayout, 0, 1,
         &instance->descriptorSets[instance->currentFrame], 0, NULL);
 
@@ -1483,9 +1487,16 @@ static void drawFrame(HxfVulkanInstance * instance) {
     instance->currentFrame = (instance->currentFrame + 1) % HXF_MAX_FRAMES_IN_FLIGHT;
 }
 
-static void createVertexBuffer(HxfVulkanInstance * instance) {
-    VkDeviceSize bufferSize = sizeof(HxfVertex) * HXF_VERTEX_COUNT;
+/**
+ * \brief Create the buffer that hold the vertices data (vertex data, instance data, index).
+ */
+static void createBuffers(HxfVulkanInstance * instance) {
+    const size_t verticesSize = sizeof(HxfVertex) * HXF_VERTEX_COUNT;
+    const size_t instanceDataSize = sizeof(HxfVertexInstanceData) * HXF_INSTANCE_COUNT;
+    const size_t indicesSize = sizeof(uint32_t) * HXF_INDICE_COUNT;
+    VkDeviceSize bufferSize = verticesSize + instanceDataSize + indicesSize;
 
+    // Create the staging buffer
     VkBuffer stagingBuffer;
     VkDeviceMemory stagingBufferMemory;
 
@@ -1495,75 +1506,24 @@ static void createVertexBuffer(HxfVulkanInstance * instance) {
         VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
         &stagingBuffer, &stagingBufferMemory);
-    
+
+    // Map the data
     void * data;
     vkMapMemory(instance->device, stagingBufferMemory, 0, bufferSize, 0, &data);
-    memcpy(data, instance->vertices, (size_t)bufferSize);
+    memcpy(data, instance->vertices, verticesSize);
+    memcpy(data + verticesSize, instance->instanceData, instanceDataSize);
+    memcpy(data + verticesSize + instanceDataSize, instance->indices, indicesSize);
     vkUnmapMemory(instance->device, stagingBufferMemory);
 
+    // Move the data to a VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT memory
     createBuffer(
         instance,
         bufferSize,
-        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-        &instance->vertexBuffer, &instance->vertexBufferMemory);
+        &instance->buffer, &instance->bufferMemory);
 
-    copyBuffer(instance, stagingBuffer, instance->vertexBuffer, bufferSize);
-
-    vkDestroyBuffer(instance->device, stagingBuffer, NULL);
-    vkFreeMemory(instance->device, stagingBufferMemory, NULL);
-
-    // Creating instance data
-    bufferSize = sizeof(HxfVertexInstanceData) * HXF_INSTANCE_COUNT;
-
-    createBuffer(
-        instance,
-        bufferSize,
-        VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-        &stagingBuffer, &stagingBufferMemory);
-
-    vkMapMemory(instance->device, stagingBufferMemory, 0, bufferSize, 0, &data);
-    memcpy(data, instance->instanceData, (size_t)bufferSize);
-    vkUnmapMemory(instance->device, stagingBufferMemory);
-
-    createBuffer(
-        instance,
-        bufferSize,
-        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-        &instance->instanceBuffer, &instance->instanceBufferMemory);
-
-    copyBuffer(instance, stagingBuffer, instance->instanceBuffer, bufferSize);
-
-    vkDestroyBuffer(instance->device, stagingBuffer, NULL);
-    vkFreeMemory(instance->device, stagingBufferMemory, NULL);
-}
-
-void createIndexBuffer(HxfVulkanInstance * instance) {
-    VkDeviceSize bufferSize = sizeof(uint16_t) * HXF_INDICE_COUNT;
-
-    VkBuffer stagingBuffer;
-    VkDeviceMemory stagingBufferMemory;
-    createBuffer(
-        instance,
-        bufferSize,
-        VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-        &stagingBuffer, &stagingBufferMemory);
-
-    void* data;
-    vkMapMemory(instance->device, stagingBufferMemory, 0, bufferSize, 0, &data);
-    memcpy(data, instance->indices, (size_t) bufferSize);
-    vkUnmapMemory(instance->device, stagingBufferMemory);
-
-    createBuffer(instance,
-        bufferSize,
-        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
-        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-        &instance->indexBuffer, &instance->indexBufferMemory);
-
-    copyBuffer(instance, stagingBuffer, instance->indexBuffer, bufferSize);
+    copyBuffer(instance, stagingBuffer, instance->buffer, bufferSize);
 
     vkDestroyBuffer(instance->device, stagingBuffer, NULL);
     vkFreeMemory(instance->device, stagingBufferMemory, NULL);
@@ -1678,7 +1638,7 @@ void hxfInitVulkan(HxfVulkanInstance * instance) {
         {{-0.5f, 0.5f, 0.5f}, green}
     };
 
-    const uint16_t indices[HXF_INDICE_COUNT] = {
+    const uint32_t indices[HXF_INDICE_COUNT] = {
         0, 1, 2, 2, 3, 0, // Top face
         3, 2, 6, 6, 7, 3, // Front face
         7, 6, 5, 5, 4, 7, // Bottom face
@@ -1723,8 +1683,7 @@ void hxfInitVulkan(HxfVulkanInstance * instance) {
     createCommandPool(instance);
     createDepthRessources(instance);
     createFramebuffers(instance);
-    createVertexBuffer(instance);
-    createIndexBuffer(instance);
+    createBuffers(instance);
     createUniformBuffers(instance);
     createDescriptorPool(instance);
     createDescriptorSets(instance);
@@ -1748,13 +1707,8 @@ void hxfDestroyVulkan(HxfVulkanInstance * instance) {
 
     vkDestroyDescriptorSetLayout(instance->device, instance->descriptorSetLayout, NULL);
 
-    vkDestroyBuffer(instance->device, instance->indexBuffer, NULL);
-    vkFreeMemory(instance->device, instance->indexBufferMemory, NULL);
-
-    vkDestroyBuffer(instance->device, instance->instanceBuffer, NULL);
-    vkFreeMemory(instance->device, instance->instanceBufferMemory, NULL);
-    vkDestroyBuffer(instance->device, instance->vertexBuffer, NULL);
-    vkFreeMemory(instance->device, instance->vertexBufferMemory, NULL);
+    vkDestroyBuffer(instance->device, instance->buffer, NULL);
+    vkFreeMemory(instance->device, instance->bufferMemory, NULL);
 
     for (size_t i = 0; i != HXF_MAX_FRAMES_IN_FLIGHT; i++) {
         vkDestroySemaphore(instance->device, instance->imageAvailableSemaphores[i], NULL);

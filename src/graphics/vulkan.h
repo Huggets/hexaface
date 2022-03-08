@@ -68,12 +68,8 @@ typedef struct HxfVulkanInstance {
     VkFence * inFlightFences;
 
     HxfVertex vertices[HXF_VERTEX_COUNT];
-    uint16_t indices[HXF_INDICE_COUNT];
+    uint32_t indices[HXF_INDICE_COUNT];
 
-    VkBuffer vertexBuffer;
-    VkDeviceMemory vertexBufferMemory;
-    VkBuffer indexBuffer;
-    VkDeviceMemory indexBufferMemory;
     VkBuffer * uniformBuffers;
     VkDeviceMemory * uniformBuffersMemory;
 
@@ -90,10 +86,10 @@ typedef struct HxfVulkanInstance {
     float yaw; // TODO REMOVE
     HxfVec3 pos;
     HxfVec3 front;
-
-    VkBuffer instanceBuffer; // Buffer that old the vertex offset for each instance
-    VkDeviceMemory instanceBufferMemory;
     HxfVertexInstanceData instanceData[HXF_INSTANCE_COUNT]; // TODO Rename
+
+    VkBuffer buffer; ///< Store all data of the vertices (vertex attributes, index…)
+    VkDeviceMemory bufferMemory;
 } HxfVulkanInstance;
 
 /**
