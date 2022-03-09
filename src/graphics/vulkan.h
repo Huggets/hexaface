@@ -5,9 +5,10 @@
 #pragma once
 
 #include <vulkan/vulkan.h>
+#include "vertex.h"
 #include "../hxf.h"
 #include "../window.h"
-#include "vertex.h"
+#include "../camera.h"
 #include "../math/linear-algebra.h"
 
 /**
@@ -69,7 +70,10 @@ typedef struct HxfVulkanInstance {
 
     HxfVertex vertices[HXF_VERTEX_COUNT];
     uint32_t indices[HXF_INDICE_COUNT];
+    HxfVertexInstanceData instanceData[HXF_INSTANCE_COUNT]; // TODO Rename
 
+    VkBuffer verticesBuffer; ///< Store all data of the vertices (vertex attributes, index…)
+    VkDeviceMemory verticesBufferMemory;
     VkBuffer * uniformBuffers;
     VkDeviceMemory * uniformBuffersMemory;
 
@@ -82,14 +86,7 @@ typedef struct HxfVulkanInstance {
 
     float lastFrameTime; ///< Processor time the last frame took
 
-    float pitch; // TODO REMOVE
-    float yaw; // TODO REMOVE
-    HxfVec3 pos;
-    HxfVec3 front;
-    HxfVertexInstanceData instanceData[HXF_INSTANCE_COUNT]; // TODO Rename
-
-    VkBuffer buffer; ///< Store all data of the vertices (vertex attributes, index…)
-    VkDeviceMemory bufferMemory;
+    HxfCamera camera;
 } HxfVulkanInstance;
 
 /**

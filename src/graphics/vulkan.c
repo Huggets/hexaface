@@ -14,8 +14,6 @@
 #define VALIDATION_LAYER_COUNT 1
 #endif
 
-
-
 /**
  * \struct QueueFamilyIndices
  * \brief Used to find a suitable GPU that has the required queue families.
@@ -145,18 +143,17 @@ static uint32_t getInstanceVersion() {
  */
 static void checkExtensionSupport(char ** extensions, int count) {
 #ifdef HXF_VALIDATION_LAYERS
-    const char validationLayerName[] = "VK_LAYER_KHRONOS_validation";
     uint32_t globalExtensionCount;
     vkEnumerateInstanceExtensionProperties(NULL, &globalExtensionCount, NULL);
     uint32_t validationLayersExtensionCount;
-    vkEnumerateInstanceExtensionProperties(validationLayerName, &validationLayersExtensionCount, NULL);
+    vkEnumerateInstanceExtensionProperties(validationLayers[0], &validationLayersExtensionCount, NULL);
     uint32_t extensionCount = globalExtensionCount + validationLayersExtensionCount;
 
     VkExtensionProperties * instanceExtensions =
         hxfMalloc(sizeof(VkExtensionProperties) * extensionCount);
 
     vkEnumerateInstanceExtensionProperties(NULL, &globalExtensionCount, instanceExtensions);
-    vkEnumerateInstanceExtensionProperties(validationLayerName, &validationLayersExtensionCount,
+    vkEnumerateInstanceExtensionProperties(validationLayers[0], &validationLayersExtensionCount,
         instanceExtensions + globalExtensionCount);
 #else
     uint32_t extensionCount;
@@ -1307,9 +1304,9 @@ static void recordCommandBuffer(HxfVulkanInstance * instance, VkCommandBuffer co
     const VkDeviceSize offsetsBinding1[] = { sizeof(HxfVertex) * HXF_VERTEX_COUNT };
     const VkDeviceSize indexOffset =
         sizeof(HxfVertex) * HXF_VERTEX_COUNT + sizeof(HxfVertexInstanceData) * HXF_INSTANCE_COUNT;
-    vkCmdBindVertexBuffers(commandBuffer, 0, 1, &instance->buffer, offsetsBinding0);
-    vkCmdBindVertexBuffers(commandBuffer, 1, 1, &instance->buffer, offsetsBinding1);
-    vkCmdBindIndexBuffer(commandBuffer, instance->buffer, indexOffset, VK_INDEX_TYPE_UINT32);
+    vkCmdBindVertexBuffers(commandBuffer, 0, 1, &instance->verticesBuffer, offsetsBinding0);
+    vkCmdBindVertexBuffers(commandBuffer, 1, 1, &instance->verticesBuffer, offsetsBinding1);
+    vkCmdBindIndexBuffer(commandBuffer, instance->verticesBuffer, indexOffset, VK_INDEX_TYPE_UINT32);
 
     vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, instance->pipelineLayout, 0, 1,
         &instance->descriptorSets[instance->currentFrame], 0, NULL);
@@ -1408,17 +1405,19 @@ static void updateUniformBuffer(HxfVulkanInstance * instance, uint32_t currentIm
     hxfUpdateWindowInformation(&instance->window); // The latest information on the width and height
 
     HxfVec3 direction = {
-        cosf(instance->yaw) * cosf(instance->pitch),
-        sin(instance->pitch),
-        sin(instance->yaw) * cos(instance->pitch)
+        cosf(instance->camera.yaw) * cosf(instance->camera.pitch),
+        sin(instance->camera.pitch),
+        sin(instance->camera.yaw) * cos(instance->camera.pitch)
     };
-    instance->front = hxfVec3Normalize(direction);
+    instance->camera.front = direction;
+    instance->camera.front.y = 0.f;
+    instance->camera.front = hxfVec3Normalize(instance->camera.front);
 
     HxfUniformBufferObject ubo = {
         HXF_MAT4_IDENTITY,
         hxfViewMatrix(
-            instance->pos,
-            instance->front,
+            instance->camera.position,
+            hxfVec3Normalize(direction),
             (HxfVec3){0.f, -1.f, 0.f}),
         hxfPerspectiveProjection(0.1f, 10.f, 1.0472f, (float)instance->window.info.width / (float)instance->window.info.height)
     };
@@ -1535,9 +1534,9 @@ static void createBuffers(HxfVulkanInstance * instance) {
         bufferSize,
         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-        &instance->buffer, &instance->bufferMemory);
+        &instance->verticesBuffer, &instance->verticesBufferMemory);
 
-    copyBuffer(instance, stagingBuffer, instance->buffer, bufferSize);
+    copyBuffer(instance, stagingBuffer, instance->verticesBuffer, bufferSize);
 
     vkDestroyBuffer(instance->device, stagingBuffer, NULL);
     vkFreeMemory(instance->device, stagingBufferMemory, NULL);
@@ -1637,6 +1636,13 @@ static void createDescriptorSets(HxfVulkanInstance * instance) {
 void hxfInitVulkan(HxfVulkanInstance * instance) {
     instance->currentFrame = 0;
 
+    instance->camera = (HxfCamera){
+        {0.f, -1.f, 0.f},
+        {0},
+        {0},
+        0.f, -1.57079632f
+    };
+
     const HxfVec3 red = {1.0f, 0.0f, 0.0f};
     const HxfVec3 green = {0.0f, 1.0f, 0.0f};
 
@@ -1661,10 +1667,13 @@ void hxfInitVulkan(HxfVulkanInstance * instance) {
         5, 6, 2, 2, 1, 5  // Right face
     };
 
-    HxfVertexInstanceData instanceData[HXF_INSTANCE_COUNT] = {0};
-    for (int i = 0; i != HXF_INSTANCE_COUNT; i++) {
-        instanceData[i].offset.x = i;
-    }
+    HxfVertexInstanceData instanceData[HXF_INSTANCE_COUNT] = {
+        {{0.f, 0.f, 0.f}},
+        {{1.f, 0.f, 0.f}},
+        {{2.f, 0.f, 0.f}},
+        {{0.f, 0.f, -1.f}},
+        {{0.f, -1.f, -1.f}}
+    };
 
 
     for (unsigned int i = HXF_VERTEX_COUNT - 1; i != -1; i--) {
@@ -1721,8 +1730,8 @@ void hxfDestroyVulkan(HxfVulkanInstance * instance) {
 
     vkDestroyDescriptorSetLayout(instance->device, instance->descriptorSetLayout, NULL);
 
-    vkDestroyBuffer(instance->device, instance->buffer, NULL);
-    vkFreeMemory(instance->device, instance->bufferMemory, NULL);
+    vkDestroyBuffer(instance->device, instance->verticesBuffer, NULL);
+    vkFreeMemory(instance->device, instance->verticesBufferMemory, NULL);
 
     for (size_t i = 0; i != HXF_MAX_FRAMES_IN_FLIGHT; i++) {
         vkDestroySemaphore(instance->device, instance->imageAvailableSemaphores[i], NULL);
@@ -1745,11 +1754,6 @@ void hxfDestroyVulkan(HxfVulkanInstance * instance) {
 
 void hxfRunVulkan(HxfVulkanInstance * instance) {
     int isRunning = 1;
-
-    instance->pitch = 0.0f;
-    instance->yaw = -1.57079632f;
-    instance->pos = (HxfVec3){0};
-    instance->front = (HxfVec3){0};
 
     const clock_t executionStart = clock();
     clock_t lastTime = executionStart;
@@ -1776,57 +1780,51 @@ void hxfRunVulkan(HxfVulkanInstance * instance) {
         }
 
         if (instance->window.keysState.arrowUp) {
-            instance->pitch -= instance->lastFrameTime * 150.f;
+            instance->camera.pitch -= instance->lastFrameTime * 150.f;
         }
         if (instance->window.keysState.arrowDown) {
-            instance->pitch += instance->lastFrameTime * 150.f;
+            instance->camera.pitch += instance->lastFrameTime * 150.f;
         }
         if (instance->window.keysState.arrowLeft) {
-            instance->yaw += instance->lastFrameTime * 150.f;
+            instance->camera.yaw += instance->lastFrameTime * 150.f;
         }
         if (instance->window.keysState.arrowRight) {
-            instance->yaw -= instance->lastFrameTime * 150.f;
+            instance->camera.yaw -= instance->lastFrameTime * 150.f;
         }
 
         if (instance->window.keysState.w) {
-            HxfVec3 tmp = instance->front;
-            tmp.y = 0.0f;
-            tmp = hxfVec3Normalize(tmp);
             float inc = instance->lastFrameTime * 50.0f;
-            tmp.x *= inc;
-            tmp.y *= inc;
-            tmp.z *= inc;
+            instance->camera.front.x *= inc;
+            instance->camera.front.y *= inc;
+            instance->camera.front.z *= inc;
 
-            instance->pos = hxfVec3Add(instance->pos, tmp);
+            instance->camera.position = hxfVec3Add(instance->camera.position, instance->camera.front);
         }
         if (instance->window.keysState.s) {
-            HxfVec3 tmp = instance->front;
-            tmp.y = 0.0f;
-            tmp = hxfVec3Normalize(tmp);
             float inc = instance->lastFrameTime * 50.0f;
-            tmp.x *= -inc;
-            tmp.y *= -inc;
-            tmp.z *= -inc;
+            instance->camera.front.x *= -inc;
+            instance->camera.front.y *= -inc;
+            instance->camera.front.z *= -inc;
 
-            instance->pos = hxfVec3Add(instance->pos, tmp);
+            instance->camera.position = hxfVec3Add(instance->camera.position, instance->camera.front);
         }
         if (instance->window.keysState.q) {
-            HxfVec3 tmp = hxfVec3Normalize(hxfVec3Cross(instance->front, (HxfVec3){0.f, -1.f, 0.f}));
+            HxfVec3 tmp = hxfVec3Normalize(hxfVec3Cross(instance->camera.front, (HxfVec3){0.f, -1.f, 0.f}));
             float inc = instance->lastFrameTime * 50.0f;
             tmp.x *= -inc;
             tmp.y *= -inc;
             tmp.z *= -inc;
 
-            instance->pos = hxfVec3Add(instance->pos, tmp);
+            instance->camera.position = hxfVec3Add(instance->camera.position, tmp);
         }
         if (instance->window.keysState.d) {
-            HxfVec3 tmp = hxfVec3Normalize(hxfVec3Cross(instance->front, (HxfVec3){0.f, -1.f, 0.f}));
+            HxfVec3 tmp = hxfVec3Normalize(hxfVec3Cross(instance->camera.front, (HxfVec3){0.f, -1.f, 0.f}));
             float inc = instance->lastFrameTime * 50.0f;
             tmp.x *= inc;
             tmp.y *= inc;
             tmp.z *= inc;
 
-            instance->pos = hxfVec3Add(instance->pos, tmp);
+            instance->camera.position = hxfVec3Add(instance->camera.position, tmp);
         }
 
         drawFrame(instance);
