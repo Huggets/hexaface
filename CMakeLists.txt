@@ -23,7 +23,7 @@ add_executable(
 
 target_link_libraries(hexaface vulkan m)
 
-# If the variable VALIDATION_LAYERS is defined then build with the validation layers enabled
+# If the variable VALIDATION_LAYERS is set to true then build with the validation layers enabled
 if (VALIDATION_LAYERS)
     target_compile_definitions(hexaface PRIVATE HXF_VALIDATION_LAYERS)
 endif()

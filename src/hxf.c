@@ -10,7 +10,7 @@ void * hxfMalloc(size_t size) {
     return data;
 }
 
-HxfResult readFile(char * filename, void ** data, size_t * size) {
+HxfResult readFile(const char * filename, void ** data, size_t * size) {
     // TODO when this program will be ported on windows, test if the "b" flag need to be added
     FILE * file = fopen(filename, "r");
     if (!file) {

@@ -26,7 +26,7 @@ HxfResult hxfCreateWindow(HxfWindow * window) {
     window->wm_delete_window = XInternAtom(window->xdisplay, "WM_DELETE_WINDOW", False);
     XSetWMProtocols(window->xdisplay, window->xwindow, &window->wm_delete_window, 1);
 
-    XAutoRepeatOff(window->xdisplay); // Disable auto repetition off keyboard keys
+    XAutoRepeatOff(window->xdisplay); // Disable auto repetition of keyboard keys
     XSelectInput(window->xdisplay, window->xwindow, KeyPressMask | KeyReleaseMask);
     XMapWindow(window->xdisplay, window->xwindow);
 
@@ -185,13 +185,6 @@ HxfResult hxfCreateVulkanSurface(HxfWindow * window, VkInstance instance, VkSurf
     }
 
     return HXF_SUCCESS;
-#endif
-}
-
-void hxfGetWindowSize(HxfWindow * window, unsigned int * width, unsigned int * height) {
-#if defined(HXF_WINDOW_XLIB)
-    *width = HXF_WINDOW_WIDTH;
-    *height = HXF_WINDOW_HEIGHT;
 #endif
 }
 

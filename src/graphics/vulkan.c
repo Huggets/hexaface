@@ -937,7 +937,18 @@ static void createImageViews(HxfVulkanInstance * instance) {
     }
 }
 
-static VkShaderModule createShaderModule(HxfVulkanInstance * instance, const void * code, size_t size) {
+/**
+ * \brief read the file spv file filename and create a shadermodule from it.
+ */
+static VkShaderModule createShaderModule(HxfVulkanInstance * instance, const char * filename) {
+    void * code;
+    size_t size;
+
+    if (readFile(filename, &code, &size) == HXF_ERROR) {
+        HXF_MSG_ERROR("failed to read shaders file in data/shaders/");
+        exit(EXIT_FAILURE);
+    };
+
     VkShaderModuleCreateInfo createInfo;
     createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
     createInfo.pNext = NULL;
@@ -951,28 +962,14 @@ static VkShaderModule createShaderModule(HxfVulkanInstance * instance, const voi
         exit(EXIT_FAILURE);
     }
 
+    free(code);
+
     return shaderModule;
 }
 
 static void createGraphicsPipeline(HxfVulkanInstance * instance) {
-    void * vertShaderCode;
-    void * fragShaderCode;
-    size_t vertShaderCodeSize;
-    size_t fragShaderCodeSize;
-
-    if (
-        readFile("../data/shaders/vert.spv", &vertShaderCode, &vertShaderCodeSize) == HXF_ERROR ||
-        readFile("../data/shaders/frag.spv", &fragShaderCode, &fragShaderCodeSize) == HXF_ERROR
-    ) {
-        HXF_MSG_ERROR("failed to read shaders file in data/shaders/");
-        exit(EXIT_FAILURE);
-    };
-
-    VkShaderModule vertShaderModule = createShaderModule(instance, vertShaderCode, vertShaderCodeSize);
-    VkShaderModule fragShaderModule = createShaderModule(instance, fragShaderCode, fragShaderCodeSize);
-
-    free(vertShaderCode);
-    free(fragShaderCode);
+    VkShaderModule vertShaderModule = createShaderModule(instance, "../data/shaders/vert.spv");
+    VkShaderModule fragShaderModule = createShaderModule(instance, "../data/shaders/frag.spv");
 
     VkPipelineShaderStageCreateInfo vertShaderStageInfo;
     vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -1290,7 +1287,7 @@ static void recordCommandBuffer(HxfVulkanInstance * instance, VkCommandBuffer co
     renderPassInfo.renderArea.extent = instance->swapchainExtent;
 
     VkClearValue clearValues[2] = {0};
-    clearValues[0].color = (VkClearColorValue){{0.0f, 0.0f, 0.0f, 1.0f}};
+    clearValues[0].color = (VkClearColorValue){{0.0f, 0.1f, 0.3f, 1.0f}};
     clearValues[1].depthStencil = (VkClearDepthStencilValue){1.0f, 0};
     
     renderPassInfo.clearValueCount = 2;
@@ -1302,8 +1299,9 @@ static void recordCommandBuffer(HxfVulkanInstance * instance, VkCommandBuffer co
 
     const VkDeviceSize offsetsBinding0[] = { 0 };
     const VkDeviceSize offsetsBinding1[] = { sizeof(HxfVertex) * HXF_VERTEX_COUNT };
-    const VkDeviceSize indexOffset =
-        sizeof(HxfVertex) * HXF_VERTEX_COUNT + sizeof(HxfVertexInstanceData) * HXF_INSTANCE_COUNT;
+    const VkDeviceSize indexOffset = sizeof(HxfVertex) * HXF_VERTEX_COUNT 
+        + sizeof(HxfVertexInstanceData) * HXF_INSTANCE_COUNT;
+
     vkCmdBindVertexBuffers(commandBuffer, 0, 1, &instance->verticesBuffer, offsetsBinding0);
     vkCmdBindVertexBuffers(commandBuffer, 1, 1, &instance->verticesBuffer, offsetsBinding1);
     vkCmdBindIndexBuffer(commandBuffer, instance->verticesBuffer, indexOffset, VK_INDEX_TYPE_UINT32);
@@ -1357,7 +1355,7 @@ static void createSyncObjects(HxfVulkanInstance * instance) {
             vkCreateSemaphore(instance->device, &semaphoreInfo, NULL, &instance->imageAvailableSemaphores[i]) ||
             vkCreateSemaphore(instance->device, &semaphoreInfo, NULL, &instance->renderFinishedSemaphores[i]) ||
             vkCreateFence(instance->device, &fenceInfo, NULL, &instance->inFlightFences[i])
-            ) {
+        ) {
             HXF_MSG_ERROR("failed to create sync objects");
             exit(EXIT_FAILURE);
         }

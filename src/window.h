@@ -130,14 +130,6 @@ HxfResult hxfGetRequiredWindowVulkanExtension(char *** extensions);
 HxfResult hxfCreateVulkanSurface(HxfWindow * window, VkInstance instance, VkSurfaceKHR * surface);
 
 /**
- * \brief Get the current size of the window.
- * \param window The window.
- * \param width A pointer to an unsigned that will be set to the window width.
- * \param height A pointer to an unsigned that will be set to the window eight.
- */
-void hxfGetWindowSize(HxfWindow * window, unsigned int * width, unsigned int * height);
-
-/**
  * \brief Get information about a window such as the width and height.
  * \param window The window.
  * \return A HxfWindowInformation pointer that gives information about the window.

@@ -70,7 +70,7 @@ typedef struct HxfVulkanInstance {
 
     HxfVertex vertices[HXF_VERTEX_COUNT];
     uint32_t indices[HXF_INDICE_COUNT];
-    HxfVertexInstanceData instanceData[HXF_INSTANCE_COUNT]; // TODO Rename
+    HxfVertexInstanceData instanceData[HXF_INSTANCE_COUNT];
 
     VkBuffer verticesBuffer; ///< Store all data of the vertices (vertex attributes, index…)
     VkDeviceMemory verticesBufferMemory;
@@ -90,7 +90,7 @@ typedef struct HxfVulkanInstance {
 } HxfVulkanInstance;
 
 /**
- * \brief Initializes a Vulkan instance.
+ * \brief Initializes Vulkan to do operations on the GPU.
  * \param instance An HxfVulkanInstance that will also be initialized.
  */
 void hxfInitVulkan(HxfVulkanInstance * instance);

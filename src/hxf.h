@@ -41,4 +41,4 @@ void * hxfMalloc(size_t size);
  * 
  * \return HXF_ERROR if the file could not be open, HXF_SUCCESS otherwise.
  */
-HxfResult readFile(char * filename, void ** data, size_t * size);
+HxfResult readFile(const char * filename, void ** data, size_t * size);

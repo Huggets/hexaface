@@ -10,6 +10,10 @@
 #define HXF_VERTEX_BINDING_DESCRIPTION_COUNT 2
 #define HXF_VERTEX_ATTRIBUTE_DESCRIPTION_COUNT 3
 
+/**
+ * \struct HxfVertexInstanceData
+ * \brief Represent vertex data for a single instance.
+ */
 typedef struct HxfVertexInstanceData {
     HxfVec3 offset;
 } HxfVertexInstanceData;
@@ -24,12 +28,12 @@ typedef struct HxfVertex {
 } HxfVertex;
 
 /**
- * \brief Get the binding description of a HxfVertex.
+ * \brief Get the binding description for the vertices.
  */
 VkVertexInputBindingDescription * hxfVertexGetBindingDescriptions();
 
 /**
- * \brief Get the attribute descriptions of a HxfVertex.
+ * \brief Get the attribute descriptions for the vertices
  * 
  * Note: the return value must be freed.
  * 
