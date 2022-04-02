@@ -78,20 +78,17 @@ float hxfVec3Dot(HxfVec3 a, HxfVec3 b);
 HxfVec3 hxfVec3Normalize(HxfVec3 a);
 
 HxfVec3 hxfVec3Add(HxfVec3 a, HxfVec3 b);
+HxfVec3 hxfVec3Sub(HxfVec3 a, HxfVec3 b);
 
 /* TRANSFORMATION */
 
 /**
- * \brief Scale the matrix by factor.
- * 
- * TODO: Write the doc.
+ * @brief Return a HxfMat4 that scale by factor.
  */
 HxfMat4 hxfMat4ScaleMatrix(HxfVec3 factor);
 
 /**
- * \brief Translation
- * 
- * TODO: Write the doc
+ * @brief Return a HxfMat4 that translate by factor.
  */
 HxfMat4 hxfMat4TranslationMatrix(HxfVec3 factor);
 
@@ -102,7 +99,7 @@ HxfMat4 hxfMat4TranslationMatrix(HxfVec3 factor);
  * 
  * TODO: Write the doc
  */
-HxfMat4 hxfMat4Rotate(float angle, HxfVec3 position);
+HxfMat4 hxfMat4Rotate(float angle, HxfVec3 axis);
 
 HxfMat4 hxfPerspectiveProjection(float near, float far, float fov, float aspect);
 

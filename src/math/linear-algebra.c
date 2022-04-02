@@ -70,6 +70,13 @@ HxfVec3 hxfVec3Add(HxfVec3 a, HxfVec3 b) {
     return a;
 }
 
+HxfVec3 hxfVec3Sub(HxfVec3 a, HxfVec3 b) {
+    a.x -= b.x;
+    a.y -= b.y;
+    a.z -= b.z;
+    return a;
+}
+
 
 /* TRANSFORMATION */
 
@@ -90,27 +97,27 @@ HxfMat4 hxfMat4TranslationMatrix(HxfVec3 factor) {
     return res;
 }
 
-HxfMat4 hxfMat4Rotate(float angle, HxfVec3 position) {
+HxfMat4 hxfMat4Rotate(float angle, HxfVec3 axis) {
     float cos = cosf(angle);
     float sin = sinf(angle);
 
     return (HxfMat4){{
         {
-            cos + powf(position.x, 2) * (1 - cos),
-            position.x * position.y * (1 - cos) - position.z * sin,
-            position.x * position.z * (1 - cos) + position.y * sin,
+            cos + powf(axis.x, 2) * (1 - cos),
+            axis.x * axis.y * (1 - cos) - axis.z * sin,
+            axis.x * axis.z * (1 - cos) + axis.y * sin,
             0
         },
         {
-            position.y * position.x * (1 - cos) + position.z * sin,
-            cos + powf(position.y, 2) * (1 - cos),
-            position.y * position.z * (1 - cos) - position.x * sin,
+            axis.y * axis.x * (1 - cos) + axis.z * sin,
+            cos + powf(axis.y, 2) * (1 - cos),
+            axis.y * axis.z * (1 - cos) - axis.x * sin,
             0
         },
         {
-            position.z * position.x * (1 - cos) - position.y * sin,
-            position.z * position.y * (1 - cos) + position.x * sin,
-            cos + powf(position.z, 2) * (1 - cos),
+            axis.z * axis.x * (1 - cos) - axis.y * sin,
+            axis.z * axis.y * (1 - cos) + axis.x * sin,
+            cos + powf(axis.z, 2) * (1 - cos),
             0
         },
         {

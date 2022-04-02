@@ -1,137 +1,114 @@
 /**
- * \file window.h
- * \brief Plateform independant code for window and input.
+ * @file window.h
+ * @brief Window and keyboard/mouse operations
+ *
+ * Functions to create a window, to handle keyboard input, to handle events.
  */
 #pragma once
 
-#if defined(HXF_WINDOW_XLIB)
-#include "X11/Xlib.h"
-#endif
-
-#if defined(HXF_WINDOW_XLIB)
-#define HXF_WINDOW_REQUIRED_VULKAN_EXTENSIONS_COUNT 2
-#endif
-
-#include "event.h"
-#include "hxf.h"
 #include <vulkan/vulkan.h>
+#include "hxf.h"
+#include "input.h"
 
 /**
- * \def HXF_WINDOW_WIDTH
- * \brief The width of the window.
+ * @brief The initial width of a window.
  */
 #define HXF_WINDOW_WIDTH 800
-
 /**
- * \def HXF_WINDOW_HEIGHT
- * \brief The height of the window.
+ * @brief The initial height of a window.
  */
 #define HXF_WINDOW_HEIGHT 600
 
 /**
- * \struct HxfKeysState
- * \brief Information about the state of keys.
- * 
- * The member variable is set to 0 when the key is released and to 1 when the key is pressed.
+ * @brief The number of keydown and keyup callback of a window.
  */
-typedef struct HxfKeysState {
-    int escape; ///< Escape keys
-    int space; ///< Spacebar
-    int arrowUp; ///< Up arrow
-    int arrowDown; ///< Down arrow
-    int arrowLeft; ///< Left arrow
-    int arrowRight; ///< Right arrow
-    int w;
-    int q;
-    int s;
-    int d;
-} HxfKeysState;
+#define HXF_WINDOW_KEY_CALLBACK_COUNT 256
 
 /**
- * Information about a window.
+ * @def struct HxfWindowParam
+ * @brief Parameters given to @ref hxfCreateMainWindow to create a window.
  */
-typedef struct HxfWindowInformation {
-    int width;
-    int height;
-} HxfWindowInformation;
+typedef struct HxfWindowParam HxfWindowParam;
 
 /**
- * \struct HxfWindow
- * \brief A window that can be used to draw things on.
- * 
- * The members must not be modified.
- * 
- * Only info and keysState can be accessed.
+ * @def struct HxfWindow
+ * @brief A window.
  */
-typedef struct HxfWindow {
-#if defined(HXF_WINDOW_XLIB)
-    Display * xdisplay;
-    Window xwindow;
-    int xscreenNumber;
-    Atom wm_protocols;
-    Atom wm_delete_window;
-#endif
-    HxfWindowInformation info; ///< You need to call hxfUpdateWindowInformation to get the latest information
-
-    HxfKeysState keysState; ///< The state of the keys
-} HxfWindow;
+typedef struct HxfWindow HxfWindow;
 
 /**
- * \brief Initialize and create the window.
- * \param window The window to initialize.
- * \return HXF_WINDOW_CREATION_ERROR if the window could not be created.\n
- * HXF_SUCCESS otherwise
- */
-HxfResult hxfCreateWindow(HxfWindow * window);
-
-/**
- * \brief Destroy the window.
- * \param window The window to destroy.
- */
-void hxfDestroyWindow(HxfWindow * window);
-
-/**
- * \brief Indicate if there are pending events.
- * \param window The window from which events are counted.
- * \return 0 if there are no pending events, a number different than zero if there are pending events.
- */
-int hxfHasPendingEvents(HxfWindow * window);
-
-/**
- * \brief Get the next event available.
- * \param window The window from which the next event is read.
- * \param event The event that is read.
- */
-void hxfGetNextEvent(HxfWindow * window, HxfEvent * event);
-
-/**
- * \brief Get the extensions needed by vulkan to work with windows.
- * 
- * The array extensions will be set with the extension names.
- * 
- * The number of required extensions is define by the HXF_WINDOW_REQUIRED_VULKAN_EXTENSIONS_COUNT macro
- * 
- * \param extensions A pointer to an array of char strings that will be set with the extensions name.
- * \return HXF_SUCCESS.
+ * @brief Create a window that is the main window.
  *
- * Note: extensions must be freed when it is not needed anymore.
+ * @param param The arguments that are required to create the window.
+ * @param window The window that will be created.
+ *
+ * @return HXF_WINDOW_CREATION_ERROR if the creation fails, HXF_SUCCESS otherwise.
  */
-HxfResult hxfGetRequiredWindowVulkanExtension(char *** extensions);
+HxfResult hxfCreateMainWindow(const HxfWindowParam* restrict param, HxfWindow* restrict window);
 
 /**
- * \brief Create a Vulkan surface from the window.
- * \param window The window.
- * \param instance The Vulkan instance that hold the surface.
- * \param surface The created surface.
+ * @brief Destroy the window.
  * 
- * \return HXF_ERROR if an error occurs during the creation.\n
- * HXF_SUCCESS if nothing went wrong.
+ * @param window The window to destroy
+ * 
+ * @return HXF_ERROR if it fails, HXF_SUCCESS otherwise.
  */
-HxfResult hxfCreateVulkanSurface(HxfWindow * window, VkInstance instance, VkSurfaceKHR * surface);
+HxfResult hxfDestroyMainWindow(HxfWindow* restrict window);
 
 /**
- * \brief Get information about a window such as the width and height.
- * \param window The window.
- * \return A HxfWindowInformation pointer that gives information about the window.
+ * @brief Read and handle all pending messages of the window.
+ *
+ * @param window A pointer to the window.
  */
-void hxfUpdateWindowInformation(HxfWindow * window);
+void hxfReadWindowMessages(HxfWindow* restrict window);
+
+/**
+ * @brief Create a VkSurfaceKHR from the window, the result is returned in surface.
+ *
+ * @param window A pointer to the window from which the surface is created.
+ * @param instance The vulkan instance that will own the surface.
+ * @param surface A pointer to the surface that will be created.
+ */
+void hxfCreateWindowSurface(HxfWindow* restrict window, VkInstance instance, VkSurfaceKHR* restrict surface);
+
+/**
+ * @brief Return the vulkan extensions that are required.
+ *
+ * The return value is allocated and must be freed.
+ *
+ * @param extensions A pointer to an array of char string that will be allocated and that will
+ * contains the required extensions.
+ * @param count A pointer to an int that will contains the number of extensions.
+ */
+void hxfGetRequiredWindowExtensions(char*** extensions, int* count);
+
+/**
+ * @brief Set the callback function that will be called when the key is pressed down.
+ *
+ * When the window get a message that the key is pressed down, the function is executed.
+ *
+ * @param window A pointer to the window that generate the event.
+ * @param scancode The scancode of the key.
+ * @param function A pointer to the function that will be called. It must be a valid
+ * pointer to a valid function.
+ * @param param A pointer to the parameter given to that callback function.
+ */
+void hxfSetKeyDownCallback(HxfWindow* window, HxfKeyCode scancode, void (*function)(void*), void* param);
+
+/**
+ * @brief Set the callback function that will be called when the key is released.
+ *
+ * When the window get a message that the key is released, the function is executed.
+ *
+ * @param window A pointer to the window that generate the event.
+ * @param scancode The scancode of the key.
+ * @param function A pointer to the function that will be called. It must be a valid
+ * pointer to a valid function.
+ * @param param A pointer to the parameter given to that callback function.
+ */
+void hxfSetKeyUpCallback(HxfWindow* window, HxfKeyCode scancode, void (*function)(void*), void* param);
+
+// The declaration is needed first, before including the rest
+#if defined(HXF_WIN32)
+#include "win32/window.h"
+#endif

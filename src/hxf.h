@@ -13,9 +13,9 @@
   * \brief A result a function returns.
   */
 typedef enum HxfResult {
-    HXF_SUCCESS, ///< No error
-    HXF_ERROR, ///< General purpose error
-    HXF_WINDOW_CREATION_ERROR ///< Error when creating a window
+  HXF_SUCCESS, ///< No error
+  HXF_ERROR, ///< General purpose error
+  HXF_WINDOW_CREATION_ERROR ///< Error when creating a window
 } HxfResult;
 
 /**
@@ -25,20 +25,34 @@ typedef enum HxfResult {
  *
  * If the allocation fails, then it exits the program.
  */
-void * hxfMalloc(size_t size);
+void* hxfMalloc(size_t size);
+
+/**
+ * @brief Reallocate ptr with its new size.
+ * 
+ * If it fails, it exits the program. 
+ */
+void* hxfRealloc(void* ptr, size_t size);
+
+/**
+ * @brief Free the memory.
+ *
+ * @param ptr
+ */
+void hxfFree(void* ptr);
 
 /**
  * \brief Read a file.
  *
  * Read the filename and put all the content into data.
- * 
+ *
  * data is allocated and thus, must be freed.
- * 
+ *
  * \param filename The name of the file.
  * \param data A pointer that will be allocated and that will contain the content of the file.\n
  * It must be freed when not used anymore.
  * \param size A pointer that will contain the size of the file.
- * 
+ *
  * \return HXF_ERROR if the file could not be open, HXF_SUCCESS otherwise.
  */
-HxfResult readFile(const char * filename, void ** data, size_t * size);
+HxfResult readFile(const char* filename, void** data, size_t* size);

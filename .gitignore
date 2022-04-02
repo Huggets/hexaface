@@ -1,3 +1,2 @@
-build/
-.vscode/
-doxygen/
+.vscode
+build

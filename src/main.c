@@ -1,12 +1,19 @@
-#include <stdlib.h>
-#include "graphics/vulkan.h"
+#ifdef HXF_WIN32
+#ifndef UNICODE
+#define UNICODE
+#endif
 
-int main(int argc, char ** argv) {
-    HxfVulkanInstance instance;
+#include <windows.h>
+#include "app.h"
 
-    hxfInitVulkan(&instance);
-    hxfRunVulkan(&instance);
-    hxfDestroyVulkan(&instance);
-
-    return EXIT_SUCCESS;
+int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine, int nCmdShow) {
+    HxfAppParam param = {
+        hInstance, nCmdShow
+    };
+    
+    hxfStartApp(&param);
+    
+    return 0;
 }
+
+#endif
