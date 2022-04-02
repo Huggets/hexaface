@@ -155,16 +155,16 @@ void hxfHandleInput(HxfAppData* restrict app) {
     /* ARROW KEYS */
 
     if (app->keyboardState.leftArrow) {
-        app->camera.yaw += 3.14f / 2.f * app->frameDuration;
+        app->camera.yaw += 3.14f * app->frameDuration;
     }
     if (app->keyboardState.rightArrow) {
-        app->camera.yaw -= 3.14f / 2.f * app->frameDuration;
+        app->camera.yaw -= 3.14f * app->frameDuration;
     }
     if (app->keyboardState.upArrow) {
-        app->camera.pitch -= 3.14f / 2.f * app->frameDuration;
+        app->camera.pitch -= 3.14f * app->frameDuration;
     }
     if (app->keyboardState.downArrow) {
-        app->camera.pitch += 3.14f / 2.f * app->frameDuration;
+        app->camera.pitch += 3.14f * app->frameDuration;
     }
 
     /* LETTER KEYS */
