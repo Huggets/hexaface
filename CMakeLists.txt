@@ -13,6 +13,7 @@ add_executable(
     src/app.c
     src/win32/window.c
     src/engine/vulkan.c
+    src/engine/pipeline.c
     src/engine/input-handler.c
     src/math/linear-algebra.c
 )

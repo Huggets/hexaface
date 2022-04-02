@@ -1,10 +1,10 @@
 #include "vulkan.h"
+#include "pipeline.h"
 #include "../hxf.h"
 
 #include <string.h>
 #include <stdio.h>
-
-#include <math.h> // todo maybe remove
+#include <math.h>
 
 /*
 STATIC FORWARD DECLARATION
@@ -13,21 +13,28 @@ STATIC FORWARD DECLARATION
 /**
  * @brief Create a the vulkan instance.
  *
- * @param engine A pointer to a HxfEngine that will own it.
+ * @param engine A pointer to the HxfEngine that will own it.
  */
 static void createInstance(HxfEngine* restrict engine);
 
 /**
  * @brief Get a physical device, create the logical device and the queue that are needed.
  *
- * @param engine A pointer to a HxfEngine that will own them.
+ * @param engine A pointer to the HxfEngine that will own them.
  */
 static void createDevice(HxfEngine* restrict engine);
 
 /**
+ * @brief Create the semaphores and the fences.
+ *
+ * @param engine A pointer to the HxfEngine that will own them.
+ */
+static void createSyncObjects(HxfEngine* restrict engine);
+
+/**
  * @brief Create the surface.
  *
- * @param engine A pointer to a HxfEngine that will own it.
+ * @param engine A pointer to the HxfEngine that will own it.
  */
 static void createSurface(HxfEngine* restrict engine);
 
@@ -37,43 +44,36 @@ static void createSurface(HxfEngine* restrict engine);
  * It gets the swapchain extent, the swapchain image format, the swapchain image count,
  * the swapchain images and create the swachain image views and the swapchain.
  *
- * @param engine A pointer to a HxfEngine that will own it.
+ * @param engine A pointer to the HxfEngine that will own it.
  */
 static void createSwapchain(HxfEngine* restrict engine);
-
-/**
- * @brief Create the render pass, the graphics pipeline layout and the graphics pipeline.
- *
- * @param engine A pointer to a HxfEngine that will own it.
- */
-static void createGraphicsPipeline(HxfEngine* restrict engine);
 
 /**
  * @brief Create the frame buffers in which the image views of the swapchain
  * will be attached.
  *
- * @param engine A pointer to a HxfEngine that will own them.
+ * @param engine A pointer to the HxfEngine that will own them.
  */
 static void createFramebuffers(HxfEngine* restrict engine);
 
 /**
  * @brief Create the command pool.
  *
- * @param engine A pointer to a HxfEngine that will own it.
+ * @param engine A pointer to the HxfEngine that will own it.
  */
 static void createCommandPool(HxfEngine* restrict engine);
 
 /**
  * @brief Create the command buffers.
  *
- * @param engine A pointer to a HxfEngine that will own them.
+ * @param engine A pointer to the HxfEngine that will own them.
  */
 static void createCommandBuffers(HxfEngine* restrict engine);
 
 /**
  * @brief Record the draw command buffer for the current frame.
  *
- * @param engine A pointer to a HxfEngine that owns it.
+ * @param engine A pointer to the HxfEngine that owns it.
  * @param imageIndex The index of the image that will be used by the command buffer.
  * @param currentFrameIndex The index of the frame that is currently rendered.
  */
@@ -82,7 +82,7 @@ static void recordDrawCommandBuffer(HxfEngine* restrict engine, uint32_t imageIn
 /**
  * @brief Transfer src buffer data to dst buffer.
  *
- * @param engine A pointer to a HxfEngine that own the buffers.
+ * @param engine A pointer to the HxfEngine that own the buffers.
  * @param src The source buffer.
  * @param dst The destination buffer.
  * @param srcOffset Offset inside src where the copy start.
@@ -90,13 +90,6 @@ static void recordDrawCommandBuffer(HxfEngine* restrict engine, uint32_t imageIn
  * @param size The size of the data to transfer.
  */
 static void transferBuffers(HxfEngine* restrict engine, VkBuffer src, VkBuffer dst, VkDeviceSize srcOffset, VkDeviceSize dstOffset, VkDeviceSize size);
-
-/**
- * @brief Create the semaphores and the fences.
- *
- * @param engine A pointer to a HxfEngine that will own them.
- */
-static void createSyncObjects(HxfEngine* restrict engine);
 
 /**
  * @brief Determine the highest vulkan API version available.
@@ -108,12 +101,12 @@ static uint32_t determineApiVersion();
 /**
  * @brief Get the index of the memory type that have the needed property and that
  * is compatible with the buffers.
- * 
- * @param engine A pointer to a HxfEngine that own the buffers and the memory.
+ *
+ * @param engine A pointer to the HxfEngine that own the buffers and the memory.
  * @param bufferCount The number of buffers.
  * @param buffers An array of buffers that need to be compatible with the memory.
  * @param propertyNeeded The property that the memory must have
- * 
+ *
  * @return The memory type index if no error, otherwise the program exit with a failure.
  */
 static uint32_t getMemoryTypeIndex(HxfEngine* restrict engine, size_t bufferCount, const VkBuffer* buffers, uint32_t propertyNeeded);
@@ -130,7 +123,7 @@ static void getVulkanLimits(HxfEngine* restrict engine);
  *
  * For example, image offset and data sizes and offsets inside the memory
  *
- * @param engine A pointer to a HxfEngine that hold the memory.
+ * @param engine A pointer to the HxfEngine that hold the memory.
  * @param sizes An array of 2 VkDeviceSize that will be modified.
  */
 static void computeMemoryNeed(HxfEngine* restrict engine, VkDeviceSize* restrict sizes);
@@ -138,7 +131,7 @@ static void computeMemoryNeed(HxfEngine* restrict engine, VkDeviceSize* restrict
 /**
  * @brief Allocate host and device memory.
  *
- * @param engine A pointer to a HxfEngine that allocate and hold the memory.
+ * @param engine A pointer to the HxfEngine that allocate and hold the memory.
  * @param memorySize The size of memory that will be allocated.
  */
 static void allocateMemory(HxfEngine* restrict engine, VkDeviceSize* restrict memorySize);
@@ -146,7 +139,7 @@ static void allocateMemory(HxfEngine* restrict engine, VkDeviceSize* restrict me
 /**
  * @brief Create the buffers.
  *
- * @param engine A pointer to a HxfEngine that will own them.
+ * @param engine A pointer to the HxfEngine that will own them.
  * @param bufferSize An array containing the size of each buffer.
  */
 static void createBuffers(HxfEngine* restrict engine, const VkDeviceSize* restrict bufferSizes);
@@ -154,14 +147,21 @@ static void createBuffers(HxfEngine* restrict engine, const VkDeviceSize* restri
 /**
  * @brief Create the depth image.
  *
- * @param engine A pointer to a HxfEngine that will own it.
+ * @param engine A pointer to the HxfEngine that will own it.
  */
 static void createDepthImage(HxfEngine* restrict engine);
 
 /**
+ * @brief Allocate memory and create the buffers and images.
+ * 
+ * @param engine A pointer to the HxfEngine that will own them.
+ */
+static void createRessources(HxfEngine* restrict engine);
+
+/**
  * @brief Create the depth image view.
  *
- * @param engine A pointer to a HxfEngine that will own it.
+ * @param engine A pointer to the HxfEngine that will own it.
  */
 static void createDepthImageView(HxfEngine* restrict engine);
 
@@ -170,7 +170,7 @@ static void createDepthImageView(HxfEngine* restrict engine);
  *
  * It includes the view-model-projection matrices.
  *
- * @param engine The engine that own the uniform buffer object.
+ * @param engine A pointer the HxfEngine that own the uniform buffer object.
  */
 static void updateUniformBufferObject(HxfEngine* restrict engine);
 
@@ -723,317 +723,6 @@ static void createSwapchain(HxfEngine* restrict engine) {
     }
 }
 
-static void createGraphicsPipeline(HxfEngine* restrict engine) {
-    // Create the shader modules
-    VkShaderModule vertexModule;
-    VkShaderModule fragmentModule;
-    void* vertexCode;
-    void* fragmentCode;
-    size_t vertexCodeSize;
-    size_t fragmentCodeSize;
-
-    if (readFile("vertex.spv", &vertexCode, &vertexCodeSize) == HXF_ERROR || readFile("fragment.spv", &fragmentCode, &fragmentCodeSize) == HXF_ERROR) {
-        HXF_MSG_ERROR("Could not open the shader file(s)");
-        exit(EXIT_FAILURE);
-    }
-
-    VkShaderModuleCreateInfo vertexModuleInfo = {
-        .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
-        .codeSize = vertexCodeSize,
-        .pCode = vertexCode,
-    };
-
-    VkShaderModuleCreateInfo fragmentModuleInfo = {
-        .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
-        .codeSize = fragmentCodeSize,
-        .pCode = fragmentCode,
-    };
-
-    if (vkCreateShaderModule(engine->device, &vertexModuleInfo, NULL, &vertexModule)
-        || vkCreateShaderModule(engine->device, &fragmentModuleInfo, NULL, &fragmentModule)) {
-        HXF_MSG_ERROR("Could not create the vertex shader module");
-        exit(EXIT_FAILURE);
-    }
-
-    hxfFree(vertexCode);
-    hxfFree(fragmentCode);
-
-    VkPipelineShaderStageCreateInfo stages[] = {
-        // The vertex shader stage
-        {
-            .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-            .stage = VK_SHADER_STAGE_VERTEX_BIT,
-            .module = vertexModule,
-            .pName = "main",
-        },
-        // The fragment shader stage
-        {
-            .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-            .stage = VK_SHADER_STAGE_FRAGMENT_BIT,
-            .module = fragmentModule,
-            .pName = "main",
-        }
-    };
-
-    VkVertexInputBindingDescription vertexBindingDescription = {
-        .binding = 0,
-        .stride = sizeof(HxfVec3),
-        .inputRate = VK_VERTEX_INPUT_RATE_VERTEX,
-    };
-    VkVertexInputAttributeDescription vertexAttributeDescription = {
-        .location = 0,
-        .binding = 0,
-        .format = VK_FORMAT_R32G32B32_SFLOAT,
-        .offset = 0,
-    };
-
-    VkPipelineVertexInputStateCreateInfo vertexInputInfo = {
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
-        .vertexBindingDescriptionCount = 1,
-        .pVertexBindingDescriptions = &vertexBindingDescription,
-        .vertexAttributeDescriptionCount = 1,
-        .pVertexAttributeDescriptions = &vertexAttributeDescription,
-    };
-
-    VkPipelineInputAssemblyStateCreateInfo inputAssemblyInfo = {
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
-        .topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
-        .primitiveRestartEnable = VK_FALSE,
-    };
-
-    VkViewport viewport = {
-        .x = 0.f,
-        .y = 0.f,
-        .minDepth = 0.f,
-        .maxDepth = 0.f,
-        .width = engine->swapchainExtent.width,
-        .height = engine->swapchainExtent.height,
-    };
-
-    VkRect2D scissors = {
-        .extent = engine->swapchainExtent,
-        .offset.x = 0,
-        .offset.y = 0,
-    };
-
-    VkPipelineViewportStateCreateInfo viewportInfo = {
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
-        .viewportCount = 1,
-        .pViewports = &viewport,
-        .scissorCount = 1,
-        .pScissors = &scissors,
-    };
-
-    VkPipelineRasterizationStateCreateInfo rasterizationInfo = {
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
-        .depthClampEnable = VK_FALSE,
-        .rasterizerDiscardEnable = VK_FALSE,
-        .polygonMode = VK_POLYGON_MODE_FILL,
-        .cullMode = VK_CULL_MODE_BACK_BIT,
-        .frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE,
-        .lineWidth = 1.f,
-    };
-
-    VkPipelineMultisampleStateCreateInfo multisampleInfo = {
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
-        .rasterizationSamples = VK_SAMPLE_COUNT_1_BIT,
-        .sampleShadingEnable = VK_FALSE,
-    };
-
-    VkPipelineDepthStencilStateCreateInfo depthStencilInfo = {
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
-        .depthTestEnable = VK_TRUE,
-        .depthWriteEnable = VK_TRUE,
-        .depthCompareOp = VK_COMPARE_OP_LESS,
-    };
-
-    VkPipelineColorBlendAttachmentState colorBlendAttachment = {
-        .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT,
-    };
-    VkPipelineColorBlendStateCreateInfo colorBlendInfo = {
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
-        .attachmentCount = 1,
-        .pAttachments = &colorBlendAttachment,
-    };
-
-    // Create the render pass
-    VkAttachmentDescription attachmentDescriptions[] = {
-        {
-            .format = engine->swapchainImageFormat,
-            .samples = VK_SAMPLE_COUNT_1_BIT,
-            .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
-            .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-            .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-            .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-            .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-            .finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
-        },
-        {
-            .format = engine->depthImageFormat,
-            .samples = VK_SAMPLE_COUNT_1_BIT,
-            .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
-            .storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-            .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-            .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-            .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-            .finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
-        }
-    };
-
-    VkAttachmentReference colorAttachementReference = {
-        .attachment = 0,
-        .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-    };
-    VkAttachmentReference depthAttachmentReference = {
-        .attachment = 1,
-        .layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
-    };
-
-    VkSubpassDescription subpassDescription = {
-        .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
-        .colorAttachmentCount = 1,
-        .pColorAttachments = &colorAttachementReference,
-        .pDepthStencilAttachment = &depthAttachmentReference
-    };
-
-    VkSubpassDependency dependency = {
-        .srcSubpass = VK_SUBPASS_EXTERNAL,
-        .dstSubpass = 0,
-        .srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
-        .srcAccessMask = 0,
-        .dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
-        .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
-    };
-
-    VkRenderPassCreateInfo renderPassInfo = {
-        .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
-        .attachmentCount = 2,
-        .pAttachments = attachmentDescriptions,
-        .subpassCount = 1,
-        .pSubpasses = &subpassDescription,
-        .dependencyCount = 1,
-        .pDependencies = &dependency,
-    };
-
-    if (vkCreateRenderPass(engine->device, &renderPassInfo, NULL, &engine->renderPass)) {
-        HXF_MSG_ERROR("Could not create the render pass");
-        exit(EXIT_FAILURE);
-    }
-
-
-    /* Create the descriptor sets */
-    // Create the descriptor set layout
-    VkDescriptorSetLayoutBinding uboDescriptorSetLayoutBinding = {
-        .binding = 0,
-        .descriptorCount = 1,
-        .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-        .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
-    };
-    VkDescriptorSetLayoutCreateInfo descriptorSetLayoutInfo = {
-        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-        .bindingCount = 1,
-        .pBindings = &uboDescriptorSetLayoutBinding,
-    };
-    if (vkCreateDescriptorSetLayout(engine->device, &descriptorSetLayoutInfo, NULL, &engine->descriptorSetLayout)) {
-        HXF_MSG_ERROR("Could not create the descriptor set layout");
-        exit(EXIT_FAILURE);
-    }
-
-    // Create a descriptor pool
-    VkDescriptorPoolSize descriptorPoolSize = {
-        .descriptorCount = HXF_MAX_RENDERED_FRAMES,
-        .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-    };
-    VkDescriptorPoolCreateInfo descriptorPoolInfo = {
-        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
-        .maxSets = HXF_MAX_RENDERED_FRAMES,
-        .poolSizeCount = 1,
-        .pPoolSizes = &descriptorPoolSize,
-    };
-    if (vkCreateDescriptorPool(engine->device, &descriptorPoolInfo, NULL, &engine->descriptorPool)) {
-        HXF_MSG_ERROR("Could not create the descriptor pool");
-        exit(EXIT_FAILURE);
-    }
-
-    // Copy HXF_MAX_RENDERED_FRAMES times engine->descriptorSetLayout
-    VkDescriptorSetLayout setLayouts[HXF_MAX_RENDERED_FRAMES] = { 0 };
-    for (int i = 0; i != HXF_MAX_RENDERED_FRAMES; i++) {
-        setLayouts[i] = engine->descriptorSetLayout;
-    }
-
-    // And allocate the descriptor sets
-    engine->descriptorSets = hxfMalloc(HXF_MAX_RENDERED_FRAMES * sizeof(VkDescriptorSet));
-
-    VkDescriptorSetAllocateInfo descriptorSetInfo = {
-        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-        .descriptorPool = engine->descriptorPool,
-        .descriptorSetCount = HXF_MAX_RENDERED_FRAMES,
-        .pSetLayouts = setLayouts,
-    };
-    if (vkAllocateDescriptorSets(engine->device, &descriptorSetInfo, engine->descriptorSets)) {
-        HXF_MSG_ERROR("Could not allocate the descriptor sets");
-        exit(EXIT_FAILURE);
-    }
-
-    // Update the descriptor sets
-    for (int i = 0; i != HXF_MAX_RENDERED_FRAMES; i++) {
-        VkDescriptorBufferInfo descriptorBufferInfo = {
-            .buffer = engine->drawingData.hostBuffer,
-            .offset = engine->drawingData.uboBufferOffset,
-            .range = engine->drawingData.uboBufferSize,
-        };
-        VkWriteDescriptorSet writeDescriptorSet = {
-            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-            .dstSet = engine->descriptorSets[i],
-            .dstBinding = 0,
-            .dstArrayElement = 0,
-            .descriptorCount = 1,
-            .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-            .pBufferInfo = &descriptorBufferInfo,
-        };
-        vkUpdateDescriptorSets(engine->device, 1, &writeDescriptorSet, 0, NULL);
-    }
-
-    // Create the pipeline layout
-    VkPipelineLayoutCreateInfo pipelineLayoutInfo = { 0 };
-    pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    pipelineLayoutInfo.setLayoutCount = 1;
-    pipelineLayoutInfo.pSetLayouts = &engine->descriptorSetLayout;
-    pipelineLayoutInfo.pushConstantRangeCount = 0;
-    pipelineLayoutInfo.pPushConstantRanges = NULL;
-
-    if (vkCreatePipelineLayout(engine->device, &pipelineLayoutInfo, NULL, &engine->graphicsPipelineLayout)) {
-        HXF_MSG_ERROR("Could not create the graphics pipeline layout");
-        exit(EXIT_FAILURE);
-    }
-
-    // Create the graphics pipeline
-    VkGraphicsPipelineCreateInfo pipelineInfo = { 0 };
-    pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-    pipelineInfo.stageCount = 2;
-    pipelineInfo.pStages = stages;
-    pipelineInfo.pVertexInputState = &vertexInputInfo;
-    pipelineInfo.pInputAssemblyState = &inputAssemblyInfo;
-    pipelineInfo.pTessellationState = NULL;
-    pipelineInfo.pViewportState = &viewportInfo;
-    pipelineInfo.pRasterizationState = &rasterizationInfo;
-    pipelineInfo.pMultisampleState = &multisampleInfo;
-    pipelineInfo.pDepthStencilState = &depthStencilInfo;
-    pipelineInfo.pColorBlendState = &colorBlendInfo;
-    pipelineInfo.pDynamicState = NULL;
-    pipelineInfo.layout = engine->graphicsPipelineLayout;
-    pipelineInfo.renderPass = engine->renderPass;
-    pipelineInfo.subpass = 0;
-
-    if (vkCreateGraphicsPipelines(engine->device, NULL, 1, &pipelineInfo, NULL, &engine->graphicsPipeline)) {
-        HXF_MSG_ERROR("Could not create the graphics pipeline");
-        exit(EXIT_FAILURE);
-    }
-
-    vkDestroyShaderModule(engine->device, fragmentModule, NULL);
-    vkDestroyShaderModule(engine->device, vertexModule, NULL);
-}
-
 static void createFramebuffers(HxfEngine* restrict engine) {
     engine->swapchainFramebuffers = hxfMalloc(engine->swapchainImageCount * sizeof(VkFramebuffer));
 
@@ -1138,6 +827,9 @@ static void computeMemoryNeed(HxfEngine* restrict engine, VkDeviceSize* restrict
     *drawingDeviceBufferSizeNeeded += totalSize;
 }
 
+// TODO First thansfer data from the host to the device, then fill the host memory.
+// This will allow to use less memory as we’ll need only the max between the 
+// transfered data size and the data size that is actually needed.
 static void allocateMemory(HxfEngine* restrict engine, VkDeviceSize* restrict memorySizes) {
     const VkDeviceSize* const restrict hostMemorySize = &memorySizes[0];
     const VkDeviceSize* const restrict deviceMemorySize = &memorySizes[1];
@@ -1218,7 +910,7 @@ static void allocateMemory(HxfEngine* restrict engine, VkDeviceSize* restrict me
 }
 
 static void createBuffers(HxfEngine* restrict engine, const VkDeviceSize* restrict bufferSizes) {
-    // Create the drawing buffer
+    // Create the buffer inside the host memory
     VkBufferCreateInfo bufferInfo = {
         .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
         .size = bufferSizes[0],
@@ -1232,6 +924,7 @@ static void createBuffers(HxfEngine* restrict engine, const VkDeviceSize* restri
         exit(EXIT_FAILURE);
     }
 
+    // Create the buffer inside the device memory
     bufferInfo.size = bufferSizes[1];
     bufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
     if (vkCreateBuffer(engine->device, &bufferInfo, NULL, &engine->drawingData.deviceBuffer)) {
@@ -1312,6 +1005,26 @@ static void createDepthImageView(HxfEngine* restrict engine) {
     }
 }
 
+static void createRessources(HxfEngine* restrict engine) {
+    // First create the depth image to get its memory needs
+    createDepthImage(engine);
+
+    VkDeviceSize sizes[2] = {};
+    computeMemoryNeed(engine, sizes);
+
+    const VkDeviceSize hostBufferSizeNeeded = sizes[0];
+    const VkDeviceSize deviceBufferSizeNeeded = sizes[1];
+    VkDeviceSize bufferSizes[2] = {
+        hostBufferSizeNeeded,
+        deviceBufferSizeNeeded
+    };
+
+    createBuffers(engine, bufferSizes);
+    allocateMemory(engine, bufferSizes);
+
+    createDepthImageView(engine);
+}
+
 static void updateUniformBufferObject(HxfEngine* restrict engine) {
     engine->drawingData.ubo[0] = hxfMat4ScaleMatrix((HxfVec3) { 0.5f, 0.5f, 0.5f });
     engine->drawingData.ubo[1] = hxfViewMatrix(
@@ -1341,22 +1054,8 @@ void hxfInitEngine(HxfEngine* restrict engine) {
     createCommandPool(engine);
     createCommandBuffers(engine);
 
-    createDepthImage(engine);
-
-    VkDeviceSize sizes[2] = {};
-    computeMemoryNeed(engine, sizes);
-
-    const VkDeviceSize hostBufferSizeNeeded = sizes[0];
-    const VkDeviceSize deviceBufferSizeNeeded = sizes[1];
-
-    VkDeviceSize bufferSizes[2] = {
-        hostBufferSizeNeeded,
-        deviceBufferSizeNeeded
-    };
-    createBuffers(engine, bufferSizes);
-    allocateMemory(engine, bufferSizes);
-
-    createDepthImageView(engine);
+    // Create the buffers and the images
+    createRessources(engine);
 
     createSurface(engine);
     createSwapchain(engine);
