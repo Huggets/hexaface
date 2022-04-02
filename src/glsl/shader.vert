@@ -1,7 +1,9 @@
 #version 450
 
-// The position of the vertex
-layout(location = 0) in vec3 position;
+// In data
+layout(location = 0) in vec3 inPosition;
+layout(location = 1) in vec3 inOffset;
+layout(location = 2) in vec3 inColor;
 
 layout(binding = 0) uniform UBO {
     mat4 model;
@@ -9,6 +11,11 @@ layout(binding = 0) uniform UBO {
     mat4 projection;
 } ubo;
 
+// Out data
+layout(location = 0) out vec3 outColor;
+
+
 void main() {
-    gl_Position = ubo.projection * ubo.view * ubo.model * vec4(position, 1.0);
+    gl_Position = ubo.projection * ubo.view * ubo.model * vec4(inPosition + inOffset, 1.0);
+    outColor = inColor;
 }

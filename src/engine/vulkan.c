@@ -129,12 +129,12 @@ static void getVulkanLimits(HxfEngine* restrict engine);
 static void computeMemoryNeed(HxfEngine* restrict engine, VkDeviceSize* restrict sizes);
 
 /**
- * @brief Allocate host and device memory.
+ * @brief Allocate host and device memory, then copy the data to it.
  *
  * @param engine A pointer to the HxfEngine that allocate and hold the memory.
- * @param memorySize The size of memory that will be allocated.
+ * @param memorySizes An arary of VkDeviceSize that contains the size of ressources.
  */
-static void allocateMemory(HxfEngine* restrict engine, VkDeviceSize* restrict memorySize);
+static void allocateMemory(HxfEngine* restrict engine, VkDeviceSize* restrict sizes);
 
 /**
  * @brief Create the buffers.
@@ -153,7 +153,7 @@ static void createDepthImage(HxfEngine* restrict engine);
 
 /**
  * @brief Allocate memory and create the buffers and images.
- * 
+ *
  * @param engine A pointer to the HxfEngine that will own them.
  */
 static void createRessources(HxfEngine* restrict engine);
@@ -517,12 +517,8 @@ static void recordDrawCommandBuffer(HxfEngine* restrict engine, uint32_t imageIn
     };
 
     VkClearValue clearValue[] = {
-        {.color = {
-             .float32 = { 0.0f, 0.0f, 0.0f, 1.0f }
-        }},
-        {.depthStencil = {
-            .depth = 1.0f
-        }}
+        { .color = { { 0.0f, 0.0f, 0.0f, 1.0f }} },
+        { .depthStencil = { 1.0f, 0.0f } }
     };
 
     VkRenderPassBeginInfo renderPassBeginInfo = {
@@ -550,9 +546,18 @@ static void recordDrawCommandBuffer(HxfEngine* restrict engine, uint32_t imageIn
         0, 1, &engine->descriptorSets[currentFrameIndex],
         0, NULL
     );
-    vkCmdBindVertexBuffers(engine->drawCommandBuffers[currentFrameIndex], 0, 1, &engine->drawingData.deviceBuffer, &engine->drawingData.vertexDataBufferOffset);
-    vkCmdBindIndexBuffer(engine->drawCommandBuffers[currentFrameIndex], engine->drawingData.deviceBuffer, engine->drawingData.indexDataBufferOffset, VK_INDEX_TYPE_UINT32);
-    vkCmdDrawIndexed(engine->drawCommandBuffers[currentFrameIndex], HXF_INDEX_COUNT, 1, 0, 0, 0);
+    VkBuffer boundBuffers[] = {
+        engine->drawingData.vertexDeviceBuffer,
+        engine->drawingData.vertexDeviceBuffer
+    };
+    VkDeviceSize offsets[] = {
+        engine->drawingData.vertexPositionsBufferOffset,
+        engine->drawingData.cubesBufferOffset
+    };
+    vkCmdBindVertexBuffers(engine->drawCommandBuffers[currentFrameIndex], 0, 2, boundBuffers, offsets);
+
+    vkCmdBindIndexBuffer(engine->drawCommandBuffers[currentFrameIndex], engine->drawingData.vertexDeviceBuffer, engine->drawingData.indexDataBufferOffset, VK_INDEX_TYPE_UINT32);
+    vkCmdDrawIndexed(engine->drawCommandBuffers[currentFrameIndex], HXF_INDEX_COUNT, HXF_CUBE_COUNT, 0, 0, 0);
     vkCmdEndRenderPass(engine->drawCommandBuffers[currentFrameIndex]);
 
     if (vkEndCommandBuffer(engine->drawCommandBuffers[currentFrameIndex])) {
@@ -779,138 +784,162 @@ static void createSyncObjects(HxfEngine* restrict engine) {
     }
 }
 
-static void computeMemoryNeed(HxfEngine* restrict engine, VkDeviceSize* restrict sizes) {
-    VkDeviceSize* drawingHostBufferSizeNeeded = &sizes[0];
-    VkDeviceSize* drawingDeviceBufferSizeNeeded = &sizes[1];
 
+static void computeMemoryNeed(HxfEngine* restrict engine, VkDeviceSize* restrict sizes) {
+    // Memory architecture:
+    // host memory: host buffer
+    // device memory: depth image, vertex device buffer
+
+    // Buffer architecture:
+    // host buffer: ubo
+    // vertex device buffer: vertex positions, index data, cubes
+
+    VkDeviceSize* hostBufferSizeNeeded = &sizes[0];
+    VkDeviceSize* vertexDeviceBufferSizeNeeded = &sizes[1];
+
+    /* HOST MEMORY */
+
+    /* host buffer */
+    // ubo
     engine->drawingData.uboBufferOffset = 0;
     engine->drawingData.uboBufferSize = sizeof(engine->drawingData.ubo) * HXF_MAX_RENDERED_FRAMES;
-    *drawingHostBufferSizeNeeded = engine->drawingData.uboBufferOffset + engine->drawingData.uboBufferSize;
+    *hostBufferSizeNeeded = engine->drawingData.uboBufferOffset + engine->drawingData.uboBufferSize;
 
-    // local device memory
-    size_t totalSize = 0;
-    size_t currentSize = 0; ///< Tmp variable that hold the buffer size that is growing
-    size_t offset = 0;
+    /* DEVICE MEMORY */
 
-    // add drawing data size
-    engine->drawingData.vertexDataBufferOffset = 0;
-    engine->drawingData.vertexDataBufferSize = sizeof(engine->drawingData.vertexData);
-    currentSize =
-        engine->drawingData.vertexDataBufferOffset
-        + engine->drawingData.vertexDataBufferSize;
+    size_t currentBufferSize = 0; ///< Size of the current buffer, this value increase each time data is appended
 
-    engine->drawingData.indexDataBufferOffset = currentSize;
+    /* vertex device buffer */
+    currentBufferSize = 0;
+    // vertex positions
+    engine->drawingData.vertexPositionsBufferOffset = 0;
+    engine->drawingData.vertexPositionsBufferSize = sizeof(engine->drawingData.vertexPositions);
+    currentBufferSize =
+        engine->drawingData.vertexPositionsBufferOffset
+        + engine->drawingData.vertexPositionsBufferSize;
+
+    // index data
+    engine->drawingData.indexDataBufferOffset = currentBufferSize;
     engine->drawingData.indexDataBufferSize = sizeof(engine->drawingData.indexData);
-    currentSize =
+    currentBufferSize =
         engine->drawingData.indexDataBufferOffset
         + engine->drawingData.indexDataBufferSize;
 
-    *drawingDeviceBufferSizeNeeded = currentSize;
-    totalSize = offset + currentSize;
-    offset = totalSize;
+    // cube offsets
+    engine->drawingData.cubesBufferOffset = currentBufferSize;
+    engine->drawingData.cubesBufferSize = sizeof(engine->drawingData.cubes);
+    currentBufferSize =
+        engine->drawingData.cubesBufferOffset
+        + engine->drawingData.cubesBufferSize;
 
-    currentSize = 0;
+    *vertexDeviceBufferSizeNeeded = currentBufferSize;
 
-    // add depth image size
+
+    // depth image
     VkMemoryRequirements memoryRequirement;
     vkGetImageMemoryRequirements(engine->device, engine->depthImage, &memoryRequirement);
-    engine->depthImageMemoryOffset =
-        llabs(offset % memoryRequirement.alignment - memoryRequirement.alignment)
-        + offset;
-    engine->depthImageMemorySize = memoryRequirement.size;
-    currentSize =
-        engine->depthImageMemoryOffset
-        + engine->depthImageMemorySize;
 
-    // Set the depth image size and depth image memory offset
-    totalSize = offset + currentSize;
-    *drawingDeviceBufferSizeNeeded += totalSize;
+    engine->depthImageMemoryOffset = 0;
+    engine->depthImageMemorySize = memoryRequirement.size;
+
+    /* MEMORY OFFSET */
+
+    engine->drawingData.hostBufferMemoryOffset = 0;
+    engine->drawingData.vertexDeviceBufferMemoryOffset = engine->depthImageMemoryOffset + engine->depthImageMemorySize;
 }
 
-// TODO First thansfer data from the host to the device, then fill the host memory.
-// This will allow to use less memory as we’ll need only the max between the 
-// transfered data size and the data size that is actually needed.
-static void allocateMemory(HxfEngine* restrict engine, VkDeviceSize* restrict memorySizes) {
-    const VkDeviceSize* const restrict hostMemorySize = &memorySizes[0];
-    const VkDeviceSize* const restrict deviceMemorySize = &memorySizes[1];
-    const size_t temporaryMemoryOffset = engine->drawingData.uboBufferOffset + engine->drawingData.uboBufferSize;
+static void allocateMemory(HxfEngine* restrict engine, VkDeviceSize* restrict sizes) {
+    const VkDeviceSize* const restrict hostBufferSize = &sizes[0];
+    const VkDeviceSize* const restrict vertexBufferSize = &sizes[1];
+    const VkDeviceSize hostMemorySize = max(*hostBufferSize, *vertexBufferSize);
 
-    // Create a buffer that will transfer the data from the host to the device
+    // Create two buffers that will transfer the data from the host memory to the device memory
+    VkBuffer srcBuffer;
+    VkBuffer dstBuffer;
     VkBufferCreateInfo bufferInfo = {
         .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
         .queueFamilyIndexCount = 1,
         .pQueueFamilyIndices = &engine->graphicsQueueFamilyIndex,
         .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
-        .size = *deviceMemorySize,
+        .size = *vertexBufferSize,
         .usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
     };
-    VkBuffer buffer;
-    if (vkCreateBuffer(engine->device, &bufferInfo, NULL, &buffer)) {
-        HXF_MSG_ERROR("Could not create a temporary buffer");
+    if (vkCreateBuffer(engine->device, &bufferInfo, NULL, &srcBuffer)) {
+        HXF_MSG_ERROR("Could not create the source temporary buffer");
+        exit(EXIT_FAILURE);
+    }
+    bufferInfo.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+    if (vkCreateBuffer(engine->device, &bufferInfo, NULL, &dstBuffer)) {
+        HXF_MSG_ERROR("Could not create the destination temporary buffer");
         exit(EXIT_FAILURE);
     }
 
-    // This memory will serve as a host visible memory that can be mapped.
-    // But also as a temporary memory to transfer from it to a local device memory.
+    // Allocate the host memory.
 
-    // Allocate the host memory with the size it needs plus the size of the
-    // local device memory to be able to transfer to the device memory the additional data
-    VkBuffer buffersRequired[] = {
+    VkBuffer requiredBuffers[] = {
         engine->drawingData.hostBuffer,
-        buffer
+        srcBuffer
     };
     VkMemoryAllocateInfo allocInfo = {
         .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
-        .allocationSize = *hostMemorySize + *deviceMemorySize,
-        .memoryTypeIndex = getMemoryTypeIndex(engine, 2, buffersRequired, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+        .allocationSize = hostMemorySize,
+        .memoryTypeIndex = getMemoryTypeIndex(engine, 2, requiredBuffers, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
     };
     if (vkAllocateMemory(engine->device, &allocInfo, NULL, &engine->hostMemory)) {
         HXF_MSG_ERROR("Could not allocate host memory");
         exit(EXIT_FAILURE);
     }
 
-    // Bind the drawing buffer and the temporary buffer to the host memory
-    vkBindBufferMemory(engine->device, engine->drawingData.hostBuffer, engine->hostMemory, 0);
-    vkBindBufferMemory(engine->device, buffer, engine->hostMemory, temporaryMemoryOffset);
-
-    // Map the host memory and copy the data
-    void* data;
-    if (vkMapMemory(engine->device, engine->hostMemory, 0, allocInfo.allocationSize, 0, &data)) {
-        HXF_MSG_ERROR("Failed to map the host memory");
-        exit(EXIT_FAILURE);
-    }
-    // Copy the data that is actually used
-    memcpy(data + engine->drawingData.uboBufferOffset, engine->drawingData.ubo, engine->drawingData.uboBufferSize);
-    // Copy the temporary data that will be then transfer to the device memory
-    data += temporaryMemoryOffset;
-    memcpy(data + engine->drawingData.vertexDataBufferOffset, engine->drawingData.vertexData, engine->drawingData.vertexDataBufferSize);
-    memcpy(data + engine->drawingData.indexDataBufferOffset, engine->drawingData.indexData, engine->drawingData.indexDataBufferSize);
-    vkUnmapMemory(engine->device, engine->hostMemory);
-
-    /*
-    DEVICE MEMORY ALLOCATION
-    */
-
     // Allocate the device memory
-    allocInfo.allocationSize = *deviceMemorySize;
-    allocInfo.memoryTypeIndex = getMemoryTypeIndex(engine, 1, &engine->drawingData.deviceBuffer, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+    requiredBuffers[0] = engine->drawingData.vertexDeviceBuffer;
+    requiredBuffers[1] = dstBuffer;
+    allocInfo.allocationSize = engine->depthImageMemorySize + *vertexBufferSize; // Depth image + vertex buffer
+    allocInfo.memoryTypeIndex = getMemoryTypeIndex(engine, 2, requiredBuffers, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
     if (vkAllocateMemory(engine->device, &allocInfo, NULL, &engine->deviceMemory)) {
         HXF_MSG_ERROR("Could not allocate device memory");
         exit(EXIT_FAILURE);
     }
 
-    // Bind the drawing buffer to the device buffer
-    vkBindBufferMemory(engine->device, engine->drawingData.deviceBuffer, engine->deviceMemory, 0);
+    // Bind all the buffers
 
-    // Transfer from the temporary buffer to the buffer inside the device memory
-    transferBuffers(engine, buffer, engine->drawingData.deviceBuffer, 0, 0, *deviceMemorySize);
+    vkBindBufferMemory(engine->device, srcBuffer, engine->hostMemory, 0);
+    vkBindBufferMemory(engine->device, dstBuffer, engine->deviceMemory, engine->drawingData.vertexDeviceBufferMemoryOffset);
 
-    // Destroy the temporary buffer
-    vkDestroyBuffer(engine->device, buffer, NULL);
+    vkBindBufferMemory(engine->device, engine->drawingData.hostBuffer, engine->hostMemory, 0);
+    vkBindBufferMemory(engine->device, engine->drawingData.vertexDeviceBuffer, engine->deviceMemory, engine->drawingData.vertexDeviceBufferMemoryOffset);
+
+    // Write to host memory the data that will be transfered
+
+    void* data;
+    if (vkMapMemory(engine->device, engine->hostMemory, 0, *vertexBufferSize, 0, &data)) {
+        HXF_MSG_ERROR("Could not map memory");
+        exit(EXIT_FAILURE);
+    }
+    memcpy(data, engine->drawingData.vertexPositions, engine->drawingData.vertexPositionsBufferSize);
+    memcpy(data + engine->drawingData.indexDataBufferOffset, engine->drawingData.indexData, engine->drawingData.indexDataBufferSize);
+    memcpy(data + engine->drawingData.cubesBufferOffset, engine->drawingData.cubes, engine->drawingData.cubesBufferSize);
+    vkUnmapMemory(engine->device, engine->hostMemory);
+
+    // Transfer the data
+
+    transferBuffers(engine, srcBuffer, dstBuffer, 0, 0, *vertexBufferSize);
+
+    vkDestroyBuffer(engine->device, srcBuffer, NULL);
+    vkDestroyBuffer(engine->device, dstBuffer, NULL);
+
+    // Write to the device memory the data it actually needs
+
+    if (vkMapMemory(engine->device, engine->hostMemory, 0, *hostBufferSize, 0, &data)) {
+        HXF_MSG_ERROR("Could not map memory");
+        exit(EXIT_FAILURE);
+    }
+    memcpy(data, engine->drawingData.ubo, engine->drawingData.uboBufferSize);
+    vkUnmapMemory(engine->device, engine->hostMemory);
 }
 
 static void createBuffers(HxfEngine* restrict engine, const VkDeviceSize* restrict bufferSizes) {
-    // Create the buffer inside the host memory
+    // Host buffer
     VkBufferCreateInfo bufferInfo = {
         .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
         .size = bufferSizes[0],
@@ -920,15 +949,15 @@ static void createBuffers(HxfEngine* restrict engine, const VkDeviceSize* restri
         .pQueueFamilyIndices = &engine->graphicsQueueFamilyIndex,
     };
     if (vkCreateBuffer(engine->device, &bufferInfo, NULL, &engine->drawingData.hostBuffer)) {
-        HXF_MSG_ERROR("Could not create the drawing buffer");
+        HXF_MSG_ERROR("Could not create the host buffer");
         exit(EXIT_FAILURE);
     }
 
-    // Create the buffer inside the device memory
+    // Vertex device buffer
     bufferInfo.size = bufferSizes[1];
-    bufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-    if (vkCreateBuffer(engine->device, &bufferInfo, NULL, &engine->drawingData.deviceBuffer)) {
-        HXF_MSG_ERROR("Could not create the local device buffer");
+    bufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+    if (vkCreateBuffer(engine->device, &bufferInfo, NULL, &engine->drawingData.vertexDeviceBuffer)) {
+        HXF_MSG_ERROR("Could not create the vertex device buffer");
         exit(EXIT_FAILURE);
     }
 }
@@ -1013,10 +1042,10 @@ static void createRessources(HxfEngine* restrict engine) {
     computeMemoryNeed(engine, sizes);
 
     const VkDeviceSize hostBufferSizeNeeded = sizes[0];
-    const VkDeviceSize deviceBufferSizeNeeded = sizes[1];
+    const VkDeviceSize vertexDeviceBufferSizeNeeded = sizes[1];
     VkDeviceSize bufferSizes[2] = {
         hostBufferSizeNeeded,
-        deviceBufferSizeNeeded
+        vertexDeviceBufferSizeNeeded
     };
 
     createBuffers(engine, bufferSizes);
@@ -1088,7 +1117,7 @@ void hxfDestroyEngine(HxfEngine* restrict engine) {
     vkDestroyImageView(engine->device, engine->depthImageView, NULL);
     vkDestroyImage(engine->device, engine->depthImage, NULL);
 
-    vkDestroyBuffer(engine->device, engine->drawingData.deviceBuffer, NULL);
+    vkDestroyBuffer(engine->device, engine->drawingData.vertexDeviceBuffer, NULL);
     vkDestroyBuffer(engine->device, engine->drawingData.hostBuffer, NULL);
     vkFreeMemory(engine->device, engine->deviceMemory, NULL);
     vkFreeMemory(engine->device, engine->hostMemory, NULL);

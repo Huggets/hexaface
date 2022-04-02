@@ -221,24 +221,45 @@ void createGraphicsPipeline(HxfEngine* restrict engine) {
         }
     };
 
-    VkVertexInputBindingDescription vertexBindingDescription = {
-        .binding = 0,
-        .stride = sizeof(HxfVec3),
-        .inputRate = VK_VERTEX_INPUT_RATE_VERTEX,
+    VkVertexInputBindingDescription vertexBindingDescriptions[] = {
+        {
+            .binding = 0,
+            .stride = sizeof(HxfVec3),
+            .inputRate = VK_VERTEX_INPUT_RATE_VERTEX,
+        },
+        {
+            .binding = 1,
+            .stride = sizeof(HxfCubeData),
+            .inputRate = VK_VERTEX_INPUT_RATE_INSTANCE
+        }
     };
-    VkVertexInputAttributeDescription vertexAttributeDescription = {
-        .location = 0,
-        .binding = 0,
-        .format = VK_FORMAT_R32G32B32_SFLOAT,
-        .offset = 0,
+    VkVertexInputAttributeDescription vertexAttributeDescriptions[] = {
+        { // Vertex position
+            .binding = 0,
+            .location = 0,
+            .format = VK_FORMAT_R32G32B32_SFLOAT,
+            .offset = 0,
+        },
+        { // Cube position
+            .binding = 1,
+            .location = 1,
+            .format = VK_FORMAT_R32G32B32_SFLOAT,
+            .offset = offsetof(HxfCubeData, cubePosition)
+        },
+        { // Cube color
+            .binding = 1,
+            .location = 2,
+            .format = VK_FORMAT_R32G32B32_SFLOAT,
+            .offset = offsetof(HxfCubeData, cubeColor)
+        },
     };
 
     VkPipelineVertexInputStateCreateInfo vertexInputInfo = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
-        .vertexBindingDescriptionCount = 1,
-        .pVertexBindingDescriptions = &vertexBindingDescription,
-        .vertexAttributeDescriptionCount = 1,
-        .pVertexAttributeDescriptions = &vertexAttributeDescription,
+        .vertexBindingDescriptionCount = 2,
+        .pVertexBindingDescriptions = vertexBindingDescriptions,
+        .vertexAttributeDescriptionCount = 3,
+        .pVertexAttributeDescriptions = vertexAttributeDescriptions,
     };
 
     VkPipelineInputAssemblyStateCreateInfo inputAssemblyInfo = {
@@ -251,7 +272,7 @@ void createGraphicsPipeline(HxfEngine* restrict engine) {
         .x = 0.f,
         .y = 0.f,
         .minDepth = 0.f,
-        .maxDepth = 0.f,
+        .maxDepth = 1.f,
         .width = engine->swapchainExtent.width,
         .height = engine->swapchainExtent.height,
     };
@@ -276,7 +297,7 @@ void createGraphicsPipeline(HxfEngine* restrict engine) {
         .rasterizerDiscardEnable = VK_FALSE,
         .polygonMode = VK_POLYGON_MODE_FILL,
         .cullMode = VK_CULL_MODE_BACK_BIT,
-        .frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE,
+        .frontFace = VK_FRONT_FACE_CLOCKWISE,
         .lineWidth = 1.f,
     };
 

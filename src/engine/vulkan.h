@@ -13,6 +13,7 @@
 
 #define HXF_VERTEX_COUNT 8
 #define HXF_INDEX_COUNT 36
+#define HXF_CUBE_COUNT 5
 
 /**
  * @brief Vulkan device limits.
@@ -20,6 +21,11 @@
 typedef struct HxfVulkanLimits {
     VkDeviceSize minUniformBufferOffsetAlignment;
 } HxfVulkanLimits;
+
+typedef struct HxfCubeData {
+    HxfVec3 cubePosition;
+    HxfVec3 cubeColor;
+} HxfCubeData;
 
 /**
  * @brief Contains information on the things that will be drawn.
@@ -33,14 +39,14 @@ typedef struct HxfDrawingData {
      */
     VkBuffer hostBuffer;
     /**
-     * @brief Buffer on the local device memory.
+     * @brief Buffer on the local device memory for vertex relative data.
      */
-    VkBuffer deviceBuffer;
+    VkBuffer vertexDeviceBuffer;
 
     /**
      * @brief The vertex position.
      */
-    HxfVec3 vertexData[HXF_VERTEX_COUNT];
+    HxfVec3 vertexPositions[HXF_VERTEX_COUNT];
     /**
      * @brief The index of the vertex that is used to draw the triangles.
      */
@@ -49,15 +55,19 @@ typedef struct HxfDrawingData {
      * @brief The model, view and projection matrices.
      */
     HxfMat4 ubo[3];
+    /**
+     * @brief Position of each cubes.
+     */
+    HxfCubeData cubes[HXF_CUBE_COUNT];
 
     /**
-     * @brief Offset of the vertex data in the buffer.
+     * @brief Offset of the vertex positions in the buffer.
      */
-    size_t vertexDataBufferOffset;
+    size_t vertexPositionsBufferOffset;
     /**
-     * @brief Size of the vertex data inside the buffer.
+     * @brief Size of the vertex positions inside the buffer.
      */
-    size_t vertexDataBufferSize;
+    size_t vertexPositionsBufferSize;
     /**
      * @brief Offset of the index data in the buffer.
      */
@@ -74,6 +84,23 @@ typedef struct HxfDrawingData {
      * @brief Size of the ubo inside the buffer
      */
     size_t uboBufferSize;
+    /**
+     * @brief Offset of the cubes inside the buffer.
+     */
+    size_t cubesBufferOffset;
+    /**
+     * @brief Size of the cubes inside the buffer.
+     */
+    size_t cubesBufferSize;
+
+    /**
+     * @brief Offset of the hostBuffer inside the memory.
+     */
+    size_t hostBufferMemoryOffset;
+    /**
+     * @brief Offset of the vertxDeviceBuffer inside the memory.
+     */
+    size_t vertexDeviceBufferMemoryOffset;
 } HxfDrawingData;
 
 typedef struct HxfEngine {
