@@ -25,7 +25,7 @@ void hxfStartApp(const HxfAppParam* restrict param) {
     // Define the default app data
     HxfAppData app = {
         .engine.drawingData = {
-            .vertexPositions = {
+            .cubesVertices = {
                 {-0.5f, -0.5f, 0.0f},
                 {0.5f, -0.5f, 0.0f},
                 {0.5f, -0.5f, 1.0f},
@@ -35,7 +35,7 @@ void hxfStartApp(const HxfAppParam* restrict param) {
                 {0.5f, 0.5f, 1.0f},
                 {-0.5f, 0.5f, 1.0f},
             },
-            .indexData = {
+            .cubesVerticesIndex = {
                 0, 1, 2, 2, 3, 0,
                 3, 2, 6, 6, 7, 3,
                 7, 6, 5, 5, 4, 7,
@@ -46,7 +46,8 @@ void hxfStartApp(const HxfAppParam* restrict param) {
             .ubo = {
                 HXF_MAT4_IDENTITY,
                 HXF_MAT4_IDENTITY,
-                hxfPerspectiveProjection(0.1f, 10.f, M_PI / 3.0f, (float)HXF_WINDOW_WIDTH / (float)HXF_WINDOW_HEIGHT)
+                hxfPerspectiveProjection(0.1f, 10.f, M_PI / 3.0f, (float)HXF_WINDOW_WIDTH / (float)HXF_WINDOW_HEIGHT),
+                { 1.0f, 1.0f, 1.0f }
             },
             .cubes = {
                 { {0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f} },
@@ -54,7 +55,7 @@ void hxfStartApp(const HxfAppParam* restrict param) {
                 { {2.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f} },
                 { {3.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 0.0f} },
                 { {4.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 1.0f} },
-            }
+            },
         },
         .camera = {
             .position = { 0.0f, 0.0f, 1.0f },

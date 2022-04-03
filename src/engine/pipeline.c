@@ -125,32 +125,34 @@ static void createRenderPass(HxfEngine* restrict engine) {
 
 static void createDescriptors(HxfEngine* restrict engine) {
     // Create the descriptor set layout
-    VkDescriptorSetLayoutBinding uboDescriptorSetLayoutBinding = {
+    VkDescriptorSetLayoutBinding uboLayoutBinding = {
         .binding = 0,
-        .descriptorCount = 1,
         .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-        .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
+        .descriptorCount = 1,
+        .stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT
     };
-    VkDescriptorSetLayoutCreateInfo descriptorSetLayoutInfo = {
+    VkDescriptorSetLayoutCreateInfo uboLayoutInfo = {
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
         .bindingCount = 1,
-        .pBindings = &uboDescriptorSetLayoutBinding,
+        .pBindings = &uboLayoutBinding,
     };
-    if (vkCreateDescriptorSetLayout(engine->device, &descriptorSetLayoutInfo, NULL, &engine->descriptorSetLayout)) {
-        HXF_MSG_ERROR("Could not create the descriptor set layout");
+    if (vkCreateDescriptorSetLayout(engine->device, &uboLayoutInfo, NULL, &engine->descriptorSetLayout)) {
+        HXF_MSG_ERROR("Could not create the ubo descriptor set layout");
         exit(EXIT_FAILURE);
     }
 
     // Create a descriptor pool
-    VkDescriptorPoolSize descriptorPoolSize = {
-        .descriptorCount = HXF_MAX_RENDERED_FRAMES,
-        .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+    VkDescriptorPoolSize descriptorPoolSizes[] = {
+        {
+            .descriptorCount = HXF_MAX_RENDERED_FRAMES,
+            .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+        }
     };
     VkDescriptorPoolCreateInfo descriptorPoolInfo = {
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
         .maxSets = HXF_MAX_RENDERED_FRAMES,
         .poolSizeCount = 1,
-        .pPoolSizes = &descriptorPoolSize,
+        .pPoolSizes = descriptorPoolSizes,
     };
     if (vkCreateDescriptorPool(engine->device, &descriptorPoolInfo, NULL, &engine->descriptorPool)) {
         HXF_MSG_ERROR("Could not create the descriptor pool");
@@ -179,21 +181,23 @@ static void createDescriptors(HxfEngine* restrict engine) {
 
     // Update the descriptor sets
     for (int i = 0; i != HXF_MAX_RENDERED_FRAMES; i++) {
-        VkDescriptorBufferInfo descriptorBufferInfo = {
+        VkDescriptorBufferInfo uboDescriptorBufferInfo = {
             .buffer = engine->drawingData.hostBuffer,
             .offset = engine->drawingData.uboBufferOffset,
             .range = engine->drawingData.uboBufferSize,
         };
-        VkWriteDescriptorSet writeDescriptorSet = {
-            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-            .dstSet = engine->descriptorSets[i],
-            .dstBinding = 0,
-            .dstArrayElement = 0,
-            .descriptorCount = 1,
-            .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-            .pBufferInfo = &descriptorBufferInfo,
+        VkWriteDescriptorSet writeDescriptorSets[] = {
+            {
+                .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                .dstSet = engine->descriptorSets[i],
+                .dstBinding = 0,
+                .dstArrayElement = 0,
+                .descriptorCount = 1,
+                .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                .pBufferInfo = &uboDescriptorBufferInfo,
+            }
         };
-        vkUpdateDescriptorSets(engine->device, 1, &writeDescriptorSet, 0, NULL);
+        vkUpdateDescriptorSets(engine->device, 1, writeDescriptorSets, 0, NULL);
     }
 }
 
@@ -205,14 +209,12 @@ void createGraphicsPipeline(HxfEngine* restrict engine) {
     VkShaderModule fragmentModule = createShaderModule(engine, "fragment.spv");
 
     VkPipelineShaderStageCreateInfo stages[] = {
-        // The vertex shader stage
         {
             .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
             .stage = VK_SHADER_STAGE_VERTEX_BIT,
             .module = vertexModule,
             .pName = "main",
         },
-        // The fragment shader stage
         {
             .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
             .stage = VK_SHADER_STAGE_FRAGMENT_BIT,
@@ -324,10 +326,13 @@ void createGraphicsPipeline(HxfEngine* restrict engine) {
     };
 
     // Create the pipeline layout
+    VkDescriptorSetLayout setLayouts[] = {
+        engine->descriptorSetLayout
+    };
     VkPipelineLayoutCreateInfo pipelineLayoutInfo = { 0 };
     pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     pipelineLayoutInfo.setLayoutCount = 1;
-    pipelineLayoutInfo.pSetLayouts = &engine->descriptorSetLayout;
+    pipelineLayoutInfo.pSetLayouts = setLayouts;
     pipelineLayoutInfo.pushConstantRangeCount = 0;
     pipelineLayoutInfo.pPushConstantRanges = NULL;
 

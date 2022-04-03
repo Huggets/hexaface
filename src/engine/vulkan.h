@@ -27,6 +27,13 @@ typedef struct HxfCubeData {
     HxfVec3 cubeColor;
 } HxfCubeData;
 
+typedef struct HxfUniformBufferObject {
+    HxfMat4 model;
+    HxfMat4 view;
+    HxfMat4 projection;
+    HxfVec3 lightColor;
+} HxfUniformBufferObject;
+
 /**
  * @brief Contains information on the things that will be drawn.
  *
@@ -44,17 +51,17 @@ typedef struct HxfDrawingData {
     VkBuffer vertexDeviceBuffer;
 
     /**
-     * @brief The vertex position.
+     * @brief The vertex position used to draw a cube.
      */
-    HxfVec3 vertexPositions[HXF_VERTEX_COUNT];
+    HxfVec3 cubesVertices[HXF_VERTEX_COUNT];
     /**
-     * @brief The index of the vertex that is used to draw the triangles.
+     * @brief The index of the vertices that is used to draw a cube.
      */
-    uint32_t indexData[HXF_INDEX_COUNT];
+    uint32_t cubesVerticesIndex[HXF_INDEX_COUNT];
     /**
-     * @brief The model, view and projection matrices.
+     * @brief The Uniform buffer object of the shaders.
      */
-    HxfMat4 ubo[3];
+    HxfUniformBufferObject ubo;
     /**
      * @brief Position of each cubes.
      */
@@ -63,19 +70,19 @@ typedef struct HxfDrawingData {
     /**
      * @brief Offset of the vertex positions in the buffer.
      */
-    size_t vertexPositionsBufferOffset;
+    size_t cubesVerticesBufferOffset;
     /**
      * @brief Size of the vertex positions inside the buffer.
      */
-    size_t vertexPositionsBufferSize;
+    size_t cubesVerticesBufferSize;
     /**
      * @brief Offset of the index data in the buffer.
      */
-    size_t indexDataBufferOffset;
+    size_t cubesVerticesIndexBufferOffset;
     /**
      * @brief Size of the vertex data inside the buffer.
      */
-    size_t indexDataBufferSize;
+    size_t cubesVerticesIndexBufferSize;
     /**
      * @brief Offset of the ubo in the buffer.
      */
@@ -136,8 +143,8 @@ typedef struct HxfEngine {
     VkPipeline graphicsPipeline;
     VkPipelineLayout graphicsPipelineLayout;
     VkRenderPass renderPass;
-    VkDescriptorSetLayout descriptorSetLayout;
     VkDescriptorPool descriptorPool;
+    VkDescriptorSetLayout descriptorSetLayout;
     VkDescriptorSet* descriptorSets; ///< size = HXF_MAX_RENDERED_FRAMES
 
     VkCommandPool commandPool;

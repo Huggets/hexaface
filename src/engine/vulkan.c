@@ -517,8 +517,8 @@ static void recordDrawCommandBuffer(HxfEngine* restrict engine, uint32_t imageIn
     };
 
     VkClearValue clearValue[] = {
-        { .color = { { 0.0f, 0.0f, 0.0f, 1.0f }} },
-        { .depthStencil = { 1.0f, 0.0f } }
+        {.color = { { 0.0f, 0.0f, 0.0f, 1.0f }} },
+        {.depthStencil = { 1.0f, 0.0f } }
     };
 
     VkRenderPassBeginInfo renderPassBeginInfo = {
@@ -551,12 +551,12 @@ static void recordDrawCommandBuffer(HxfEngine* restrict engine, uint32_t imageIn
         engine->drawingData.vertexDeviceBuffer
     };
     VkDeviceSize offsets[] = {
-        engine->drawingData.vertexPositionsBufferOffset,
+        engine->drawingData.cubesVerticesBufferOffset,
         engine->drawingData.cubesBufferOffset
     };
     vkCmdBindVertexBuffers(engine->drawCommandBuffers[currentFrameIndex], 0, 2, boundBuffers, offsets);
 
-    vkCmdBindIndexBuffer(engine->drawCommandBuffers[currentFrameIndex], engine->drawingData.vertexDeviceBuffer, engine->drawingData.indexDataBufferOffset, VK_INDEX_TYPE_UINT32);
+    vkCmdBindIndexBuffer(engine->drawCommandBuffers[currentFrameIndex], engine->drawingData.vertexDeviceBuffer, engine->drawingData.cubesVerticesIndexBufferOffset, VK_INDEX_TYPE_UINT32);
     vkCmdDrawIndexed(engine->drawCommandBuffers[currentFrameIndex], HXF_INDEX_COUNT, HXF_CUBE_COUNT, 0, 0, 0);
     vkCmdEndRenderPass(engine->drawCommandBuffers[currentFrameIndex]);
 
@@ -791,11 +791,12 @@ static void computeMemoryNeed(HxfEngine* restrict engine, VkDeviceSize* restrict
     // device memory: depth image, vertex device buffer
 
     // Buffer architecture:
-    // host buffer: ubo
+    // host buffer: ubo, light color
     // vertex device buffer: vertex positions, index data, cubes
 
     VkDeviceSize* hostBufferSizeNeeded = &sizes[0];
     VkDeviceSize* vertexDeviceBufferSizeNeeded = &sizes[1];
+    size_t currentBufferSize = 0; ///< Size of the current buffer, this value increase each time data is appended
 
     /* HOST MEMORY */
 
@@ -803,29 +804,29 @@ static void computeMemoryNeed(HxfEngine* restrict engine, VkDeviceSize* restrict
     // ubo
     engine->drawingData.uboBufferOffset = 0;
     engine->drawingData.uboBufferSize = sizeof(engine->drawingData.ubo) * HXF_MAX_RENDERED_FRAMES;
-    *hostBufferSizeNeeded = engine->drawingData.uboBufferOffset + engine->drawingData.uboBufferSize;
+    currentBufferSize = engine->drawingData.uboBufferOffset + engine->drawingData.uboBufferSize;
+
+    *hostBufferSizeNeeded = currentBufferSize;
 
     /* DEVICE MEMORY */
 
-    size_t currentBufferSize = 0; ///< Size of the current buffer, this value increase each time data is appended
-
-    /* vertex device buffer */
     currentBufferSize = 0;
+
     // vertex positions
-    engine->drawingData.vertexPositionsBufferOffset = 0;
-    engine->drawingData.vertexPositionsBufferSize = sizeof(engine->drawingData.vertexPositions);
+    engine->drawingData.cubesVerticesBufferOffset = 0;
+    engine->drawingData.cubesVerticesBufferSize = sizeof(engine->drawingData.cubesVertices);
     currentBufferSize =
-        engine->drawingData.vertexPositionsBufferOffset
-        + engine->drawingData.vertexPositionsBufferSize;
+        engine->drawingData.cubesVerticesBufferOffset
+        + engine->drawingData.cubesVerticesBufferSize;
 
     // index data
-    engine->drawingData.indexDataBufferOffset = currentBufferSize;
-    engine->drawingData.indexDataBufferSize = sizeof(engine->drawingData.indexData);
+    engine->drawingData.cubesVerticesIndexBufferOffset = currentBufferSize;
+    engine->drawingData.cubesVerticesIndexBufferSize = sizeof(engine->drawingData.cubesVerticesIndex);
     currentBufferSize =
-        engine->drawingData.indexDataBufferOffset
-        + engine->drawingData.indexDataBufferSize;
+        engine->drawingData.cubesVerticesIndexBufferOffset
+        + engine->drawingData.cubesVerticesIndexBufferSize;
 
-    // cube offsets
+    // cubes
     engine->drawingData.cubesBufferOffset = currentBufferSize;
     engine->drawingData.cubesBufferSize = sizeof(engine->drawingData.cubes);
     currentBufferSize =
@@ -851,7 +852,6 @@ static void computeMemoryNeed(HxfEngine* restrict engine, VkDeviceSize* restrict
 static void allocateMemory(HxfEngine* restrict engine, VkDeviceSize* restrict sizes) {
     const VkDeviceSize* const restrict hostBufferSize = &sizes[0];
     const VkDeviceSize* const restrict vertexBufferSize = &sizes[1];
-    const VkDeviceSize hostMemorySize = max(*hostBufferSize, *vertexBufferSize);
 
     // Create two buffers that will transfer the data from the host memory to the device memory
     VkBuffer srcBuffer;
@@ -875,6 +875,10 @@ static void allocateMemory(HxfEngine* restrict engine, VkDeviceSize* restrict si
     }
 
     // Allocate the host memory.
+
+    VkMemoryRequirements hostBufferSizeRequired;
+    vkGetBufferMemoryRequirements(engine->device, engine->drawingData.hostBuffer, &hostBufferSizeRequired);
+    const VkDeviceSize hostMemorySize = max(hostBufferSizeRequired.size, *vertexBufferSize);
 
     VkBuffer requiredBuffers[] = {
         engine->drawingData.hostBuffer,
@@ -916,8 +920,8 @@ static void allocateMemory(HxfEngine* restrict engine, VkDeviceSize* restrict si
         HXF_MSG_ERROR("Could not map memory");
         exit(EXIT_FAILURE);
     }
-    memcpy(data, engine->drawingData.vertexPositions, engine->drawingData.vertexPositionsBufferSize);
-    memcpy(data + engine->drawingData.indexDataBufferOffset, engine->drawingData.indexData, engine->drawingData.indexDataBufferSize);
+    memcpy(data, engine->drawingData.cubesVertices, engine->drawingData.cubesVerticesBufferSize);
+    memcpy(data + engine->drawingData.cubesVerticesIndexBufferOffset, engine->drawingData.cubesVerticesIndex, engine->drawingData.cubesVerticesIndexBufferSize);
     memcpy(data + engine->drawingData.cubesBufferOffset, engine->drawingData.cubes, engine->drawingData.cubesBufferSize);
     vkUnmapMemory(engine->device, engine->hostMemory);
 
@@ -934,7 +938,7 @@ static void allocateMemory(HxfEngine* restrict engine, VkDeviceSize* restrict si
         HXF_MSG_ERROR("Could not map memory");
         exit(EXIT_FAILURE);
     }
-    memcpy(data, engine->drawingData.ubo, engine->drawingData.uboBufferSize);
+    memcpy(data, &engine->drawingData.ubo, engine->drawingData.uboBufferSize);
     vkUnmapMemory(engine->device, engine->hostMemory);
 }
 
@@ -1055,8 +1059,8 @@ static void createRessources(HxfEngine* restrict engine) {
 }
 
 static void updateUniformBufferObject(HxfEngine* restrict engine) {
-    engine->drawingData.ubo[0] = hxfMat4ScaleMatrix((HxfVec3) { 0.5f, 0.5f, 0.5f });
-    engine->drawingData.ubo[1] = hxfViewMatrix(
+    engine->drawingData.ubo.model = hxfMat4ScaleMatrix((HxfVec3) { 0.5f, 0.5f, 0.5f });
+    engine->drawingData.ubo.view = hxfViewMatrix(
         engine->camera->position,
         hxfVec3Normalize(engine->camera->direction),
         engine->camera->up
@@ -1071,7 +1075,7 @@ static void updateUniformBufferObject(HxfEngine* restrict engine) {
         0,
         &data
     );
-    memcpy(data, engine->drawingData.ubo, engine->drawingData.uboBufferSize);
+    memcpy(data, &engine->drawingData.ubo, engine->drawingData.uboBufferSize);
     vkUnmapMemory(engine->device, engine->hostMemory);
 }
 
