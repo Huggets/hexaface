@@ -11,15 +11,6 @@
 #include "input.h"
 
 /**
- * @brief The initial width of a window.
- */
-#define HXF_WINDOW_WIDTH 800
-/**
- * @brief The initial height of a window.
- */
-#define HXF_WINDOW_HEIGHT 600
-
-/**
  * @brief The number of keydown and keyup callback of a window.
  */
 #define HXF_WINDOW_KEY_CALLBACK_COUNT 256

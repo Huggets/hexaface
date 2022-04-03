@@ -67,7 +67,7 @@ void hxfStartApp(const HxfAppParam* restrict param) {
             .ubo = {
                 .model = HXF_MAT4_IDENTITY,
                 .view = HXF_MAT4_IDENTITY,
-                .projection = hxfPerspectiveProjection(0.1f, 10.f, M_PI / 3.0f, (float)HXF_WINDOW_WIDTH / (float)HXF_WINDOW_HEIGHT),
+                .projection = hxfPerspectiveProjection(0.1f, 10.f, M_PI / 3.0f, (float)param->windowWidth / (float)param->windowHeight),
                 .lightPosition = { 0.0f, 0.0f, 0.0f },
                 .lightColor = { 0.8f, 0.8f, 0.8f, }
             },
@@ -91,7 +91,9 @@ void hxfStartApp(const HxfAppParam* restrict param) {
     // Create the main window
     HxfWindowParam windowParameter = {
         param->hInstance,
-        param->nCmdShow
+        param->nCmdShow,
+        param->windowWidth,
+        param->windowHeight
     };
     hxfCreateMainWindow(&windowParameter, &app.mainWindow);
     app.engine.mainWindow = &app.mainWindow;

@@ -14,11 +14,15 @@
 struct HxfWindowParam {
     HINSTANCE hInstance;
     int nCmdShow;
+    int width;
+    int height;
 };
 
 struct HxfWindow {
     HWND hwnd;
     HINSTANCE hInstance;
+    int width;
+    int height;
     /**
      * @brief An array of callback function that are called when a key is pressed.
      *

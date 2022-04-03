@@ -996,7 +996,7 @@ static void createDepthImage(HxfEngine* restrict engine) {
         .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
         .imageType = VK_IMAGE_TYPE_2D,
         .format = engine->depthImageFormat,
-        .extent = { HXF_WINDOW_WIDTH, HXF_WINDOW_HEIGHT, 1 },
+        .extent = { engine->mainWindow->width, engine->mainWindow->height, 1 },
         .mipLevels = 1,
         .arrayLayers = 1,
         .samples = VK_SAMPLE_COUNT_1_BIT,

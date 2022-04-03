@@ -26,13 +26,15 @@ HxfResult hxfCreateMainWindow(const HxfWindowParam* restrict param, HxfWindow* w
 
     RegisterClass(&wc);
 
+    window->width = param->width;
+    window->height = param->height;
     window->hInstance = param->hInstance;
     window->hwnd = CreateWindowEx(
         0,
         CLASS_NAME,
         L"Main Window",
         WS_OVERLAPPED,
-        CW_USEDEFAULT, CW_USEDEFAULT, HXF_WINDOW_WIDTH, HXF_WINDOW_HEIGHT,
+        CW_USEDEFAULT, CW_USEDEFAULT, param->width, param->height,
         NULL,
         NULL,
         param->hInstance,

@@ -67,6 +67,9 @@ typedef struct HxfAppParam {
      * @brief The nCmdShow parameter that is given in the main function.
      */
     int nCmdShow;
+
+    int windowWidth;
+    int windowHeight;
 #endif
 } HxfAppParam;
 
