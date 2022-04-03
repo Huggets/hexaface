@@ -220,37 +220,44 @@ void createGraphicsPipeline(HxfEngine* restrict engine) {
             .stage = VK_SHADER_STAGE_FRAGMENT_BIT,
             .module = fragmentModule,
             .pName = "main",
-        }
+        },
     };
 
-    VkVertexInputBindingDescription vertexBindingDescriptions[] = {
+    VkVertexInputBindingDescription cubeBindingDescriptions[] = {
+        // Cubes
         {
             .binding = 0,
-            .stride = sizeof(HxfVec3),
+            .stride = sizeof(HxfVertex),
             .inputRate = VK_VERTEX_INPUT_RATE_VERTEX,
         },
         {
             .binding = 1,
             .stride = sizeof(HxfCubeData),
             .inputRate = VK_VERTEX_INPUT_RATE_INSTANCE
-        }
+        },
     };
-    VkVertexInputAttributeDescription vertexAttributeDescriptions[] = {
+    VkVertexInputAttributeDescription cubeAttributeDescriptions[] = {
         { // Vertex position
             .binding = 0,
             .location = 0,
             .format = VK_FORMAT_R32G32B32_SFLOAT,
-            .offset = 0,
+            .offset = offsetof(HxfVertex, position),
+        },
+        { // Vertex normal
+            .binding = 0,
+            .location = 1,
+            .format = VK_FORMAT_R32G32B32_SFLOAT,
+            .offset = offsetof(HxfVertex, normal)
         },
         { // Cube position
             .binding = 1,
-            .location = 1,
+            .location = 2,
             .format = VK_FORMAT_R32G32B32_SFLOAT,
             .offset = offsetof(HxfCubeData, cubePosition)
         },
         { // Cube color
             .binding = 1,
-            .location = 2,
+            .location = 3,
             .format = VK_FORMAT_R32G32B32_SFLOAT,
             .offset = offsetof(HxfCubeData, cubeColor)
         },
@@ -259,9 +266,9 @@ void createGraphicsPipeline(HxfEngine* restrict engine) {
     VkPipelineVertexInputStateCreateInfo vertexInputInfo = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
         .vertexBindingDescriptionCount = 2,
-        .pVertexBindingDescriptions = vertexBindingDescriptions,
-        .vertexAttributeDescriptionCount = 3,
-        .pVertexAttributeDescriptions = vertexAttributeDescriptions,
+        .pVertexBindingDescriptions = cubeBindingDescriptions,
+        .vertexAttributeDescriptionCount = 4,
+        .pVertexAttributeDescriptions = cubeAttributeDescriptions,
     };
 
     VkPipelineInputAssemblyStateCreateInfo inputAssemblyInfo = {

@@ -791,7 +791,7 @@ static void computeMemoryNeed(HxfEngine* restrict engine, VkDeviceSize* restrict
     // device memory: depth image, vertex device buffer
 
     // Buffer architecture:
-    // host buffer: ubo, light color
+    // host buffer: ubo
     // vertex device buffer: vertex positions, index data, cubes
 
     VkDeviceSize* hostBufferSizeNeeded = &sizes[0];
@@ -812,7 +812,7 @@ static void computeMemoryNeed(HxfEngine* restrict engine, VkDeviceSize* restrict
 
     currentBufferSize = 0;
 
-    // vertex positions
+    // vertex data
     engine->drawingData.cubesVerticesBufferOffset = 0;
     engine->drawingData.cubesVerticesBufferSize = sizeof(engine->drawingData.cubesVertices);
     currentBufferSize =
@@ -1059,7 +1059,6 @@ static void createRessources(HxfEngine* restrict engine) {
 }
 
 static void updateUniformBufferObject(HxfEngine* restrict engine) {
-    engine->drawingData.ubo.model = hxfMat4ScaleMatrix((HxfVec3) { 0.5f, 0.5f, 0.5f });
     engine->drawingData.ubo.view = hxfViewMatrix(
         engine->camera->position,
         hxfVec3Normalize(engine->camera->direction),

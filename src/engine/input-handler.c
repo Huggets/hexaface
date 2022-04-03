@@ -80,6 +80,51 @@ static void dKeyUp(void* param) {
     state->d = 0;
 }
 
+static void iKeyDown(void* param) {
+    HxfKeyboardState* state = (HxfKeyboardState*)param;
+    state->i = 1;
+}
+static void iKeyUp(void* param) {
+    HxfKeyboardState* state = (HxfKeyboardState*)param;
+    state->i = 0;
+}
+
+static void jKeyDown(void* param) {
+    HxfKeyboardState* state = (HxfKeyboardState*)param;
+    state->j = 1;
+}
+static void jKeyUp(void* param) {
+    HxfKeyboardState* state = (HxfKeyboardState*)param;
+    state->j = 0;
+}
+
+static void kKeyDown(void* param) {
+    HxfKeyboardState* state = (HxfKeyboardState*)param;
+    state->k = 1;
+}
+static void kKeyUp(void* param) {
+    HxfKeyboardState* state = (HxfKeyboardState*)param;
+    state->k = 0;
+}
+
+static void lKeyDown(void* param) {
+    HxfKeyboardState* state = (HxfKeyboardState*)param;
+    state->l = 1;
+}
+static void lKeyUp(void* param) {
+    HxfKeyboardState* state = (HxfKeyboardState*)param;
+    state->l = 0;
+}
+
+static void oKeyDown(void* param) {
+    HxfKeyboardState* state = (HxfKeyboardState*)param;
+    state->o = 1;
+}
+static void oKeyUp(void* param) {
+    HxfKeyboardState* state = (HxfKeyboardState*)param;
+    state->o = 0;
+}
+
 static void qKeyDown(void* param) {
     HxfKeyboardState* state = (HxfKeyboardState*)param;
     state->q = 1;
@@ -96,6 +141,15 @@ static void sKeyDown(void* param) {
 static void sKeyUp(void* param) {
     HxfKeyboardState* state = (HxfKeyboardState*)param;
     state->s = 0;
+}
+
+static void uKeyDown(void* param) {
+    HxfKeyboardState* state = (HxfKeyboardState*)param;
+    state->u = 1;
+}
+static void uKeyUp(void* param) {
+    HxfKeyboardState* state = (HxfKeyboardState*)param;
+    state->u = 0;
 }
 
 static void zKeyDown(void* param) {
@@ -122,8 +176,14 @@ void hxfInitInput(HxfAppData* restrict app) {
     hxfSetKeyDownCallback(&app->mainWindow, HXF_KEY_UP, upKeyDown, &app->keyboardState);
     hxfSetKeyDownCallback(&app->mainWindow, HXF_KEY_DOWN, downKeyDown, &app->keyboardState);
     hxfSetKeyDownCallback(&app->mainWindow, HXF_KEY_D, dKeyDown, &app->keyboardState);
+    hxfSetKeyDownCallback(&app->mainWindow, HXF_KEY_I, iKeyDown, &app->keyboardState);
+    hxfSetKeyDownCallback(&app->mainWindow, HXF_KEY_J, jKeyDown, &app->keyboardState);
+    hxfSetKeyDownCallback(&app->mainWindow, HXF_KEY_K, kKeyDown, &app->keyboardState);
+    hxfSetKeyDownCallback(&app->mainWindow, HXF_KEY_L, lKeyDown, &app->keyboardState);
+    hxfSetKeyDownCallback(&app->mainWindow, HXF_KEY_O, oKeyDown, &app->keyboardState);
     hxfSetKeyDownCallback(&app->mainWindow, HXF_KEY_Q, qKeyDown, &app->keyboardState);
     hxfSetKeyDownCallback(&app->mainWindow, HXF_KEY_S, sKeyDown, &app->keyboardState);
+    hxfSetKeyDownCallback(&app->mainWindow, HXF_KEY_U, uKeyDown, &app->keyboardState);
     hxfSetKeyDownCallback(&app->mainWindow, HXF_KEY_Z, zKeyDown, &app->keyboardState);
     hxfSetKeyDownCallback(&app->mainWindow, HXF_KEY_SHIFT_LEFT, shiftKeyDown, &app->keyboardState);
     hxfSetKeyDownCallback(&app->mainWindow, HXF_KEY_SHIFT_RIGHT, shiftKeyDown, &app->keyboardState);
@@ -134,8 +194,14 @@ void hxfInitInput(HxfAppData* restrict app) {
     hxfSetKeyUpCallback(&app->mainWindow, HXF_KEY_UP, upKeyUp, &app->keyboardState);
     hxfSetKeyUpCallback(&app->mainWindow, HXF_KEY_DOWN, downKeyUp, &app->keyboardState);
     hxfSetKeyUpCallback(&app->mainWindow, HXF_KEY_D, dKeyUp, &app->keyboardState);
+    hxfSetKeyUpCallback(&app->mainWindow, HXF_KEY_I, iKeyUp, &app->keyboardState);
+    hxfSetKeyUpCallback(&app->mainWindow, HXF_KEY_J, jKeyUp, &app->keyboardState);
+    hxfSetKeyUpCallback(&app->mainWindow, HXF_KEY_K, kKeyUp, &app->keyboardState);
+    hxfSetKeyUpCallback(&app->mainWindow, HXF_KEY_L, lKeyUp, &app->keyboardState);
+    hxfSetKeyUpCallback(&app->mainWindow, HXF_KEY_O, oKeyUp, &app->keyboardState);
     hxfSetKeyUpCallback(&app->mainWindow, HXF_KEY_Q, qKeyUp, &app->keyboardState);
     hxfSetKeyUpCallback(&app->mainWindow, HXF_KEY_S, sKeyUp, &app->keyboardState);
+    hxfSetKeyUpCallback(&app->mainWindow, HXF_KEY_U, uKeyUp, &app->keyboardState);
     hxfSetKeyUpCallback(&app->mainWindow, HXF_KEY_Z, zKeyUp, &app->keyboardState);
     hxfSetKeyUpCallback(&app->mainWindow, HXF_KEY_SHIFT_LEFT, shiftKeyUp, &app->keyboardState);
     hxfSetKeyUpCallback(&app->mainWindow, HXF_KEY_SHIFT_RIGHT, shiftKeyUp, &app->keyboardState);
@@ -143,6 +209,29 @@ void hxfInitInput(HxfAppData* restrict app) {
 }
 
 void hxfHandleInput(HxfAppData* restrict app) {
+    const float moveSpeed = 2.0f;
+    
+    // Move light
+    
+    if (app->keyboardState.j) {
+        app->engine.drawingData.ubo.lightPosition.x -= app->frameDuration * moveSpeed;
+    }
+    if (app->keyboardState.l) {
+        app->engine.drawingData.ubo.lightPosition.x += app->frameDuration * moveSpeed;
+    }
+    if (app->keyboardState.i) {
+        app->engine.drawingData.ubo.lightPosition.z -= app->frameDuration * moveSpeed;
+    }
+    if (app->keyboardState.k) {
+        app->engine.drawingData.ubo.lightPosition.z += app->frameDuration * moveSpeed;
+    }
+    if (app->keyboardState.u) {
+        app->engine.drawingData.ubo.lightPosition.y -= app->frameDuration * moveSpeed;
+    }
+    if (app->keyboardState.o) {
+        app->engine.drawingData.ubo.lightPosition.y += app->frameDuration * moveSpeed;
+    }
+    
     /* MISC KEYS */
 
     if (app->keyboardState.shift) {
@@ -171,39 +260,38 @@ void hxfHandleInput(HxfAppData* restrict app) {
 
     if (app->keyboardState.z) {
         HxfVec3 tmp = app->camera.front;
-        tmp.x *= app->frameDuration;
-        tmp.y *= app->frameDuration;
-        tmp.z *= app->frameDuration;
+        tmp.x *= app->frameDuration * moveSpeed;
+        tmp.y *= app->frameDuration * moveSpeed;
+        tmp.z *= app->frameDuration * moveSpeed;
 
         app->camera.position = hxfVec3Add(app->camera.position, tmp);
     }
     if (app->keyboardState.s) {
         HxfVec3 tmp = app->camera.front;
-        tmp.x *= app->frameDuration;
-        tmp.y *= app->frameDuration;
-        tmp.z *= app->frameDuration;
+        tmp.x *= app->frameDuration * moveSpeed;
+        tmp.y *= app->frameDuration * moveSpeed;
+        tmp.z *= app->frameDuration * moveSpeed;
 
         app->camera.position = hxfVec3Sub(app->camera.position, tmp);
     }
     if (app->keyboardState.q) {
         HxfVec3 tmp = hxfVec3Normalize(hxfVec3Cross(app->camera.front, app->camera.up));
-        tmp.x *= -app->frameDuration;
-        tmp.y *= -app->frameDuration;
-        tmp.z *= -app->frameDuration;
+        tmp.x *= -app->frameDuration * moveSpeed;
+        tmp.y *= -app->frameDuration * moveSpeed;
+        tmp.z *= -app->frameDuration * moveSpeed;
 
         app->camera.position = hxfVec3Add(app->camera.position, tmp);
     }
     if (app->keyboardState.d) {
         HxfVec3 tmp = hxfVec3Normalize(hxfVec3Cross(app->camera.front, app->camera.up));
-        tmp.x *= app->frameDuration;
-        tmp.y *= app->frameDuration;
-        tmp.z *= app->frameDuration;
+        tmp.x *= app->frameDuration * moveSpeed;
+        tmp.y *= app->frameDuration * moveSpeed;
+        tmp.z *= app->frameDuration * moveSpeed;
 
         app->camera.position = hxfVec3Add(app->camera.position, tmp);
     }
 
     /* COMPUTING */
-    M_PI_2;
 
     // Limits
     if (app->camera.pitch > 1.570796251f) {

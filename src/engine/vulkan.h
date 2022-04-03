@@ -6,14 +6,16 @@
 #include "../camera.h"
 #include "../input.h"
 
+#include <stdalign.h>
+
 /**
  * @brief The maximum number of frames that can be rendered at the same time.
  */
 #define HXF_MAX_RENDERED_FRAMES 2
 
-#define HXF_VERTEX_COUNT 8
+#define HXF_VERTEX_COUNT 24
 #define HXF_INDEX_COUNT 36
-#define HXF_CUBE_COUNT 5
+#define HXF_CUBE_COUNT 3
 
 /**
  * @brief Vulkan device limits.
@@ -28,11 +30,17 @@ typedef struct HxfCubeData {
 } HxfCubeData;
 
 typedef struct HxfUniformBufferObject {
-    HxfMat4 model;
-    HxfMat4 view;
-    HxfMat4 projection;
-    HxfVec3 lightColor;
+    alignas(16) HxfMat4 model;
+    alignas(16) HxfMat4 view;
+    alignas(16) HxfMat4 projection;
+    alignas(16) HxfVec3 lightPosition;
+    alignas(16) HxfVec3 lightColor;
 } HxfUniformBufferObject;
+
+typedef struct HxfVertex {
+    HxfVec3 position;
+    HxfVec3 normal;
+} HxfVertex;
 
 /**
  * @brief Contains information on the things that will be drawn.
@@ -53,7 +61,7 @@ typedef struct HxfDrawingData {
     /**
      * @brief The vertex position used to draw a cube.
      */
-    HxfVec3 cubesVertices[HXF_VERTEX_COUNT];
+    HxfVertex cubesVertices[HXF_VERTEX_COUNT];
     /**
      * @brief The index of the vertices that is used to draw a cube.
      */
