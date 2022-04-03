@@ -264,7 +264,7 @@ void hxfHandleInput(HxfAppData* restrict app) {
         tmp.y *= app->frameDuration * moveSpeed;
         tmp.z *= app->frameDuration * moveSpeed;
 
-        app->camera.position = hxfVec3Add(app->camera.position, tmp);
+        app->camera.position = hxfVec3Add(&app->camera.position, &tmp);
     }
     if (app->keyboardState.s) {
         HxfVec3 tmp = app->camera.front;
@@ -272,23 +272,25 @@ void hxfHandleInput(HxfAppData* restrict app) {
         tmp.y *= app->frameDuration * moveSpeed;
         tmp.z *= app->frameDuration * moveSpeed;
 
-        app->camera.position = hxfVec3Sub(app->camera.position, tmp);
+        app->camera.position = hxfVec3Sub(&app->camera.position, &tmp);
     }
     if (app->keyboardState.q) {
-        HxfVec3 tmp = hxfVec3Normalize(hxfVec3Cross(app->camera.front, app->camera.up));
+        HxfVec3 tmp = hxfVec3Cross(&app->camera.front, &app->camera.up);
+        tmp = hxfVec3Normalize(&tmp);
         tmp.x *= -app->frameDuration * moveSpeed;
         tmp.y *= -app->frameDuration * moveSpeed;
         tmp.z *= -app->frameDuration * moveSpeed;
 
-        app->camera.position = hxfVec3Add(app->camera.position, tmp);
+        app->camera.position = hxfVec3Add(&app->camera.position, &tmp);
     }
     if (app->keyboardState.d) {
-        HxfVec3 tmp = hxfVec3Normalize(hxfVec3Cross(app->camera.front, app->camera.up));
+        HxfVec3 tmp = hxfVec3Cross(&app->camera.front, &app->camera.up);
+        tmp = hxfVec3Normalize(&tmp);
         tmp.x *= app->frameDuration * moveSpeed;
         tmp.y *= app->frameDuration * moveSpeed;
         tmp.z *= app->frameDuration * moveSpeed;
 
-        app->camera.position = hxfVec3Add(app->camera.position, tmp);
+        app->camera.position = hxfVec3Add(&app->camera.position, &tmp);
     }
 
     /* COMPUTING */
@@ -309,5 +311,5 @@ void hxfHandleInput(HxfAppData* restrict app) {
     app->camera.direction = direction;
     app->camera.front = direction;
     app->camera.front.y = 0.f;
-    app->camera.front = hxfVec3Normalize(app->camera.front);
+    app->camera.front = hxfVec3Normalize(&app->camera.front);
 }

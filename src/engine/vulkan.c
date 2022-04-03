@@ -1059,10 +1059,11 @@ static void createRessources(HxfEngine* restrict engine) {
 }
 
 static void updateUniformBufferObject(HxfEngine* restrict engine) {
+    HxfVec3 normalizedDirection = hxfVec3Normalize(&engine->camera->direction);
     engine->drawingData.ubo.view = hxfViewMatrix(
-        engine->camera->position,
-        hxfVec3Normalize(engine->camera->direction),
-        engine->camera->up
+        &engine->camera->position,
+        &normalizedDirection,
+        &engine->camera->up
     );
 
     void* data;
