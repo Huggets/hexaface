@@ -21,61 +21,85 @@ static void mainLoop(HxfAppData* restrict app) {
     }
 }
 
+static void initWorld(HxfAppData* restrict app) {
+    const HxfVec3 brown = { 135.0f / 255.0f, 64.0f / 255.0f, 13.0f / 255.0f };
+    const HxfVec3 green = { 0.0f, 124.0f / 255.0f, 67.0f / 255.0f };
+    // Fill with brown the bottom
+    for (int y = 6; y != 2; y--) {
+        for (int x = 0; x != 15; x++) {
+            for (int z = 0; z != 15; z++) {
+                app->world.cubes[z][y][x] = 1;
+            }
+        }
+    }
+
+    // A green on top of the brown
+    for (int x = 0; x != 15; x++) {
+        for (int z = 0; z != 15; z++) {
+            app->world.cubes[z][3][x] = 2;
+        }
+    }
+
+    for (int z = 0; z != HXF_WORLD_LENGTH; z++) {
+        for (int y = 0; y != HXF_WORLD_LENGTH; y++) {
+            for (int x = 0; x != HXF_WORLD_LENGTH; x++) {
+                uint8_t type = app->world.cubes[z][y][x];
+                if (type != 0) {
+                    HxfCubeData* const restrict cube = &app->engine.drawingData.cubes[app->engine.drawingData.cubeCount];
+                    cube->cubePosition.x = x;
+                    cube->cubePosition.y = y;
+                    cube->cubePosition.z = z;
+                    switch (type) {
+                    case 1:
+                        cube->cubeColor = brown;
+                        break;
+                    case 2:
+                        cube->cubeColor = green;
+                        break;
+                    }
+
+                    app->engine.drawingData.cubeCount++;
+                }
+            }
+        }
+    }
+}
+
 void hxfStartApp(const HxfAppParam* restrict param) {
     // Define the default app data
     HxfAppData app = {
+        .engine.keyboardState = &app.keyboardState,
+        .engine.camera = &app.camera,
         .engine.drawingData = {
             .cubesVertices = {
-                { {-0.5f, -0.5f, 0.0f}, {0.0f, -1.0f, 0.0f} },
-                { {0.5f, -0.5f, 0.0f}, {0.0f, -1.0f, 0.0f} },
-                { {0.5f, -0.5f, 1.0f}, {0.0f, -1.0f, 0.0f} },
-                { {-0.5f, -0.5f, 1.0f}, {0.0f, -1.0f, 0.0f} },
-
-                { {-0.5f, -0.5f, 1.0f}, {0.0f, 0.0f, 1.0f} },
-                { {0.5f, -0.5f, 1.0f}, {0.0f, 0.0f, 1.0f} },
-                { {0.5f, 0.5f, 1.0f}, {0.0f, 0.0f, 1.0f} },
-                { {-0.5f, 0.5f, 1.0f}, {0.0f, 0.0f, 1.0f} },
-
-                { {-0.5f, 0.5f, 1.0f}, {0.0f, 1.0f, 0.0f} },
-                { {0.5f, 0.5f, 1.0f}, {0.0f, 1.0f, 0.0f} },
-                { {0.5f, 0.5f, 0.0f}, {0.0f, 1.0f, 0.0f} },
-                { {-0.5f, 0.5f, 0.0f}, {0.0f, 1.0f, 0.0f} },
-
-                { {-0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, -1.0f} },
-                { {0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, -1.0f} },
-                { {0.5f, -0.5f, 0.0f}, {0.0f, 0.0f, -1.0f} },
-                { {-0.5f, -0.5f, 0.0f}, {0.0f, 0.0f, -1.0f} },
-
-                { {0.5f, -0.5f, 1.0f}, {1.0f, 0.0f, 0.0f } },
-                { {0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f } },
-                { {0.5f, 0.5f, 0.0f}, {1.0f, 0.0f, 0.0f } },
-                { {0.5f, 0.5f, 1.0f}, {1.0f, 0.0f, 0.0f } },
-
-                { {-0.5f, -0.5f, 0.0f}, {-1.0f, 0.0f, 0.0f} },
-                { {-0.5f, -0.5f, 1.0f}, {-1.0f, 0.0f, 0.0f} },
-                { {-0.5f, 0.5f, 1.0f}, {-1.0f, 0.0f, 0.0f} },
-                { {-0.5f, 0.5f, 0.0f}, {-1.0f, 0.0f, 0.0f} }
+                {-0.5f, -0.5f, 0.0f},
+                {0.5f, -0.5f, 0.0f},
+                {0.5f, -0.5f, 1.0f},
+                {-0.5f, -0.5f, 1.0f},
+                {-0.5f, 0.5f, 0.0f},
+                {0.5f, 0.5f, 0.0f},
+                {0.5f, 0.5f, 1.0f},
+                {-0.5f, 0.5f, 1.0f},
             },
-            .cubesVerticesIndex = {
+            .cubesVertexIndices = {
                 0, 1, 2, 2, 3, 0,
-                4, 5, 6, 6, 7, 4,
-                8, 9, 10, 10, 11, 8,
-                12, 13, 14, 14, 15, 12,
-                16, 17, 18, 18, 19, 16,
-                20, 21, 22, 22, 23, 20
+                3, 2, 6, 6, 7, 3,
+                7, 6, 5, 5, 4, 7,
+                4, 5, 1, 1, 0, 4,
+                2, 1, 5, 5, 6, 2,
+                0, 3, 7, 7, 4, 0
             },
             .ubo = {
                 .model = HXF_MAT4_IDENTITY,
                 .view = HXF_MAT4_IDENTITY,
-                .projection = hxfPerspectiveProjection(0.1f, 10.f, M_PI / 3.0f, (float)param->windowWidth / (float)param->windowHeight),
-                .lightPosition = { 0.0f, 0.0f, 0.0f },
-                .lightColor = { 0.8f, 0.8f, 0.8f, }
+                .projection = hxfPerspectiveProjection(0.1f, 100.f, M_PI / 3.0f, (float)param->windowWidth / (float)param->windowHeight),
             },
-            .cubes = {
-                { {0.0f, 0.0f, 0.0f}, {79.0f / 255.0f, 18.0f / 255.0f, 140.0f / 255.0f} },
-                { {-1.0f, 0.0f, 0.0f}, {79.0f / 255.0f, 18.0f / 255.0f, 140.0f / 255.0f} },
-                { {0.0f, -1.0f, 0.0f}, {1.0f, 1.0f, 1.0f} },
-            },
+            // .cubes = {
+            //     { {0.0f, 0.0f, 0.0f}, {79.0f / 255.0f, 18.0f / 255.0f, 140.0f / 255.0f} },
+            //     { {-1.0f, 0.0f, 0.0f}, {79.0f / 255.0f, 18.0f / 255.0f, 140.0f / 255.0f} },
+            //     { {0.0f, -1.0f, 0.0f}, {1.0f, 1.0f, 1.0f} },
+            //     { {-3.0f, 0.0f, 1.0f}, {0.5f, 0.5f, 0.5f} },
+            // },
         },
         .camera = {
             .position = { 0.0f, 0.0f, 2.0f },
@@ -83,10 +107,12 @@ void hxfStartApp(const HxfAppParam* restrict param) {
             .yaw = -M_PI_2,
             .pitch = 0.0f,
         },
-        .engine.keyboardState = &app.keyboardState,
-        .engine.camera = &app.camera,
         .run = 1,
     };
+
+    // Scale the model matrix by 0.5
+    const HxfVec3 scaleVector = { 0.5f, 0.5f, 0.5f };
+    app.engine.drawingData.ubo.model = hxfMat4ScaleMatrix(&scaleVector);
 
     // Create the main window
     HxfWindowParam windowParameter = {
@@ -100,6 +126,7 @@ void hxfStartApp(const HxfAppParam* restrict param) {
 
     // Initialization
     hxfInitInput(&app);
+    initWorld(&app);
     hxfInitEngine(&app.engine);
 
     // Run the main loop

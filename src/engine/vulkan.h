@@ -5,6 +5,7 @@
 #include "../math/linear-algebra.h"
 #include "../camera.h"
 #include "../input.h"
+#include "../world.h"
 
 #include <stdalign.h>
 
@@ -15,14 +16,7 @@
 
 #define HXF_VERTEX_COUNT 24
 #define HXF_INDEX_COUNT 36
-#define HXF_CUBE_COUNT 3
-
-/**
- * @brief Vulkan device limits.
- */
-typedef struct HxfVulkanLimits {
-    VkDeviceSize minUniformBufferOffsetAlignment;
-} HxfVulkanLimits;
+#define HXF_CUBE_COUNT HXF_WORLD_LENGTH * HXF_WORLD_LENGTH * HXF_WORLD_LENGTH
 
 typedef struct HxfCubeData {
     HxfVec3 cubePosition;
@@ -33,14 +27,7 @@ typedef struct HxfUniformBufferObject {
     alignas(16) HxfMat4 model;
     alignas(16) HxfMat4 view;
     alignas(16) HxfMat4 projection;
-    alignas(16) HxfVec3 lightPosition;
-    alignas(16) HxfVec3 lightColor;
 } HxfUniformBufferObject;
-
-typedef struct HxfVertex {
-    HxfVec3 position;
-    HxfVec3 normal;
-} HxfVertex;
 
 /**
  * @brief Contains information on the things that will be drawn.
@@ -56,16 +43,16 @@ typedef struct HxfDrawingData {
     /**
      * @brief Buffer on the local device memory for vertex relative data.
      */
-    VkBuffer vertexDeviceBuffer;
+    VkBuffer deviceBuffer;
 
     /**
      * @brief The vertex position used to draw a cube.
      */
-    HxfVertex cubesVertices[HXF_VERTEX_COUNT];
+    HxfVec3 cubesVertices[HXF_VERTEX_COUNT];
     /**
      * @brief The index of the vertices that is used to draw a cube.
      */
-    uint32_t cubesVerticesIndex[HXF_INDEX_COUNT];
+    uint32_t cubesVertexIndices[HXF_INDEX_COUNT];
     /**
      * @brief The Uniform buffer object of the shaders.
      */
@@ -74,6 +61,11 @@ typedef struct HxfDrawingData {
      * @brief Position of each cubes.
      */
     HxfCubeData cubes[HXF_CUBE_COUNT];
+
+    /**
+     * @brief The number of cubes to draw.
+     */
+    size_t cubeCount;
 
     /**
      * @brief Offset of the vertex positions in the buffer.
@@ -86,11 +78,11 @@ typedef struct HxfDrawingData {
     /**
      * @brief Offset of the index data in the buffer.
      */
-    size_t cubesVerticesIndexBufferOffset;
+    size_t cubesVertexIndicesBufferOffset;
     /**
      * @brief Size of the vertex data inside the buffer.
      */
-    size_t cubesVerticesIndexBufferSize;
+    size_t cubesVertexIndicesBufferSize;
     /**
      * @brief Offset of the ubo in the buffer.
      */
@@ -115,7 +107,7 @@ typedef struct HxfDrawingData {
     /**
      * @brief Offset of the vertxDeviceBuffer inside the memory.
      */
-    size_t vertexDeviceBufferMemoryOffset;
+    size_t deviceBufferMemoryOffset;
 } HxfDrawingData;
 
 typedef struct HxfEngine {
@@ -161,7 +153,13 @@ typedef struct HxfEngine {
     VkSemaphore* nextImageAvailableSemaphores; ///< size = HXF_MAX_RENDERED_FRAMES
     VkSemaphore* nextImageSubmitedSemaphores; ///< size = HXF_MAX_RENDERED_FRAMES
     VkFence* imageRenderedFences; ///< size = HXF_MAX_RENDERED_FRAMES
-    VkFence fence; ///< A fence that can be used for anything
+
+    /**
+     * @brief Fence that can be used for anything.
+     * 
+     * It is used when transfering data from one buffer to another.
+     */
+    VkFence fence;
 
     VkDeviceMemory hostMemory; ///< Memory that is available on the host
     VkDeviceMemory deviceMemory; ///< Memory only available for the device

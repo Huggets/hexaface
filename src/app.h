@@ -11,6 +11,7 @@
 #include "window.h"
 #include "input.h"
 #include "camera.h"
+#include "world.h"
 #include "engine/vulkan.h"
 
 /**
@@ -40,6 +41,11 @@ typedef struct HxfAppData {
      * @brief The camera where the scene is viewed by the player.
      */
     HxfCamera camera;
+
+    /**
+     * @brief The world that is made of cubes.
+     */
+    HxfWorld world;
 
     /**
      * @brief If set 0, it indicates that the app should stop.

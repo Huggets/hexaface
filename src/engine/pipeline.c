@@ -129,7 +129,7 @@ static void createDescriptors(HxfEngine* restrict engine) {
         .binding = 0,
         .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
         .descriptorCount = 1,
-        .stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT
+        .stageFlags = VK_SHADER_STAGE_VERTEX_BIT
     };
     VkDescriptorSetLayoutCreateInfo uboLayoutInfo = {
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
@@ -227,7 +227,7 @@ void createGraphicsPipeline(HxfEngine* restrict engine) {
         // Cubes
         {
             .binding = 0,
-            .stride = sizeof(HxfVertex),
+            .stride = sizeof(HxfVec3),
             .inputRate = VK_VERTEX_INPUT_RATE_VERTEX,
         },
         {
@@ -241,13 +241,7 @@ void createGraphicsPipeline(HxfEngine* restrict engine) {
             .binding = 0,
             .location = 0,
             .format = VK_FORMAT_R32G32B32_SFLOAT,
-            .offset = offsetof(HxfVertex, position),
-        },
-        { // Vertex normal
-            .binding = 0,
-            .location = 1,
-            .format = VK_FORMAT_R32G32B32_SFLOAT,
-            .offset = offsetof(HxfVertex, normal)
+            .offset = 0,
         },
         { // Cube position
             .binding = 1,
@@ -267,7 +261,7 @@ void createGraphicsPipeline(HxfEngine* restrict engine) {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
         .vertexBindingDescriptionCount = 2,
         .pVertexBindingDescriptions = cubeBindingDescriptions,
-        .vertexAttributeDescriptionCount = 4,
+        .vertexAttributeDescriptionCount = 3,
         .pVertexAttributeDescriptions = cubeAttributeDescriptions,
     };
 

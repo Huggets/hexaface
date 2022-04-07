@@ -211,27 +211,6 @@ void hxfInitInput(HxfAppData* restrict app) {
 void hxfHandleInput(HxfAppData* restrict app) {
     const float moveSpeed = 2.0f;
     
-    // Move light
-    
-    if (app->keyboardState.j) {
-        app->engine.drawingData.ubo.lightPosition.x -= app->frameDuration * moveSpeed;
-    }
-    if (app->keyboardState.l) {
-        app->engine.drawingData.ubo.lightPosition.x += app->frameDuration * moveSpeed;
-    }
-    if (app->keyboardState.i) {
-        app->engine.drawingData.ubo.lightPosition.z -= app->frameDuration * moveSpeed;
-    }
-    if (app->keyboardState.k) {
-        app->engine.drawingData.ubo.lightPosition.z += app->frameDuration * moveSpeed;
-    }
-    if (app->keyboardState.u) {
-        app->engine.drawingData.ubo.lightPosition.y -= app->frameDuration * moveSpeed;
-    }
-    if (app->keyboardState.o) {
-        app->engine.drawingData.ubo.lightPosition.y += app->frameDuration * moveSpeed;
-    }
-    
     /* MISC KEYS */
 
     if (app->keyboardState.shift) {
