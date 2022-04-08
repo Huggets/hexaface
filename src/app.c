@@ -92,14 +92,8 @@ void hxfStartApp(const HxfAppParam* restrict param) {
             .ubo = {
                 .model = HXF_MAT4_IDENTITY,
                 .view = HXF_MAT4_IDENTITY,
-                .projection = hxfPerspectiveProjection(0.1f, 100.f, M_PI / 3.0f, (float)param->windowWidth / (float)param->windowHeight),
+                .projection = hxfPerspectiveProjection(0.1f, 100.0f, M_PI / 180.0f * 60.0f, (float)param->windowWidth / (float)param->windowHeight)
             },
-            // .cubes = {
-            //     { {0.0f, 0.0f, 0.0f}, {79.0f / 255.0f, 18.0f / 255.0f, 140.0f / 255.0f} },
-            //     { {-1.0f, 0.0f, 0.0f}, {79.0f / 255.0f, 18.0f / 255.0f, 140.0f / 255.0f} },
-            //     { {0.0f, -1.0f, 0.0f}, {1.0f, 1.0f, 1.0f} },
-            //     { {-3.0f, 0.0f, 1.0f}, {0.5f, 0.5f, 0.5f} },
-            // },
         },
         .camera = {
             .position = { 0.0f, 0.0f, 2.0f },
@@ -111,7 +105,7 @@ void hxfStartApp(const HxfAppParam* restrict param) {
     };
 
     // Scale the model matrix by 0.5
-    const HxfVec3 scaleVector = { 0.5f, 0.5f, 0.5f };
+    const HxfVec3 scaleVector = { 0.125f, 0.125f, 0.125f };
     app.engine.drawingData.ubo.model = hxfMat4ScaleMatrix(&scaleVector);
 
     // Create the main window
