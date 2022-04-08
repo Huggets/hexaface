@@ -12,25 +12,24 @@ HxfMat4 hxfMat4MulMat(const HxfMat4* restrict a, const HxfMat4* restrict b) {
                     a->mat[0][0] * b->mat[0][2] + a->mat[0][1] * b->mat[1][2] + a->mat[0][2] * b->mat[2][2] + a->mat[0][3] * b->mat[3][2],
                     a->mat[0][0] * b->mat[0][3] + a->mat[0][1] * b->mat[1][3] + a->mat[0][2] * b->mat[2][3] + a->mat[0][3] * b->mat[3][3],
             },
-        {
-            a->mat[1][0] * b->mat[0][0] + a->mat[1][1] * b->mat[1][0] + a->mat[1][2] * b->mat[2][0] + a->mat[1][3] * b->mat[3][0],
-            a->mat[1][0] * b->mat[0][1] + a->mat[1][1] * b->mat[1][1] + a->mat[1][2] * b->mat[2][1] + a->mat[1][3] * b->mat[3][1],
-            a->mat[1][0] * b->mat[0][2] + a->mat[1][1] * b->mat[1][2] + a->mat[1][2] * b->mat[2][2] + a->mat[1][3] * b->mat[3][2],
-            a->mat[1][0] * b->mat[0][3] + a->mat[1][1] * b->mat[1][3] + a->mat[1][2] * b->mat[2][3] + a->mat[1][3] * b->mat[3][3],
-        },
-        {
-            a->mat[2][0] * b->mat[0][0] + a->mat[2][1] * b->mat[1][0] + a->mat[2][2] * b->mat[2][0] + a->mat[2][3] * b->mat[3][0],
-            a->mat[2][0] * b->mat[0][1] + a->mat[2][1] * b->mat[1][1] + a->mat[2][2] * b->mat[2][1] + a->mat[2][3] * b->mat[3][1],
-            a->mat[2][0] * b->mat[0][2] + a->mat[2][1] * b->mat[1][2] + a->mat[2][2] * b->mat[2][2] + a->mat[2][3] * b->mat[3][2],
-            a->mat[2][0] * b->mat[0][3] + a->mat[2][1] * b->mat[1][3] + a->mat[2][2] * b->mat[2][3] + a->mat[2][3] * b->mat[3][3],
-        },
-        {
-            a->mat[3][0] * b->mat[0][0] + a->mat[3][1] * b->mat[1][0] + a->mat[3][2] * b->mat[2][0] + a->mat[3][3] * b->mat[3][0],
-            a->mat[3][0] * b->mat[0][1] + a->mat[3][1] * b->mat[1][1] + a->mat[3][2] * b->mat[2][1] + a->mat[3][3] * b->mat[3][1],
-            a->mat[3][0] * b->mat[0][2] + a->mat[3][1] * b->mat[1][2] + a->mat[3][2] * b->mat[2][2] + a->mat[3][3] * b->mat[3][2],
-            a->mat[3][0] * b->mat[0][3] + a->mat[3][1] * b->mat[1][3] + a->mat[3][2] * b->mat[2][3] + a->mat[3][3] * b->mat[3][3],
-        }
-
+            {
+                a->mat[1][0] * b->mat[0][0] + a->mat[1][1] * b->mat[1][0] + a->mat[1][2] * b->mat[2][0] + a->mat[1][3] * b->mat[3][0],
+                    a->mat[1][0] * b->mat[0][1] + a->mat[1][1] * b->mat[1][1] + a->mat[1][2] * b->mat[2][1] + a->mat[1][3] * b->mat[3][1],
+                    a->mat[1][0] * b->mat[0][2] + a->mat[1][1] * b->mat[1][2] + a->mat[1][2] * b->mat[2][2] + a->mat[1][3] * b->mat[3][2],
+                    a->mat[1][0] * b->mat[0][3] + a->mat[1][1] * b->mat[1][3] + a->mat[1][2] * b->mat[2][3] + a->mat[1][3] * b->mat[3][3],
+            },
+            {
+                a->mat[2][0] * b->mat[0][0] + a->mat[2][1] * b->mat[1][0] + a->mat[2][2] * b->mat[2][0] + a->mat[2][3] * b->mat[3][0],
+                    a->mat[2][0] * b->mat[0][1] + a->mat[2][1] * b->mat[1][1] + a->mat[2][2] * b->mat[2][1] + a->mat[2][3] * b->mat[3][1],
+                    a->mat[2][0] * b->mat[0][2] + a->mat[2][1] * b->mat[1][2] + a->mat[2][2] * b->mat[2][2] + a->mat[2][3] * b->mat[3][2],
+                    a->mat[2][0] * b->mat[0][3] + a->mat[2][1] * b->mat[1][3] + a->mat[2][2] * b->mat[2][3] + a->mat[2][3] * b->mat[3][3],
+            },
+            {
+                a->mat[3][0] * b->mat[0][0] + a->mat[3][1] * b->mat[1][0] + a->mat[3][2] * b->mat[2][0] + a->mat[3][3] * b->mat[3][0],
+                    a->mat[3][0] * b->mat[0][1] + a->mat[3][1] * b->mat[1][1] + a->mat[3][2] * b->mat[2][1] + a->mat[3][3] * b->mat[3][1],
+                    a->mat[3][0] * b->mat[0][2] + a->mat[3][1] * b->mat[1][2] + a->mat[3][2] * b->mat[2][2] + a->mat[3][3] * b->mat[3][2],
+                    a->mat[3][0] * b->mat[0][3] + a->mat[3][1] * b->mat[1][3] + a->mat[3][2] * b->mat[2][3] + a->mat[3][3] * b->mat[3][3],
+            }
         }
     };
 }
@@ -114,24 +113,24 @@ HxfMat4 hxfMat4RotationMatrix(float angle, const HxfVec3* restrict axis) {
                     axis->x* axis->z* (1 - cos) + axis->y * sin,
                     0
             },
-        {
-            axis->y * axis->x * (1 - cos) + axis->z * sin,
-            cos + powf(axis->y, 2) * (1 - cos),
-            axis->y * axis->z * (1 - cos) - axis->x * sin,
-            0
-        },
-        {
-            axis->z * axis->x * (1 - cos) - axis->y * sin,
-            axis->z * axis->y * (1 - cos) + axis->x * sin,
-            cos + powf(axis->z, 2) * (1 - cos),
-            0
-        },
-        {
-            0,
-            0,
-            0,
-            1
-        }
+            {
+                axis->y * axis->x * (1 - cos) + axis->z * sin,
+                    cos + powf(axis->y, 2) * (1 - cos),
+                    axis->y * axis->z * (1 - cos) - axis->x * sin,
+                    0
+            },
+            {
+                axis->z * axis->x * (1 - cos) - axis->y * sin,
+                    axis->z * axis->y * (1 - cos) + axis->x * sin,
+                    cos + powf(axis->z, 2) * (1 - cos),
+                    0
+            },
+            {
+                0,
+                    0,
+                    0,
+                    1
+            }
         }
     };
 }
