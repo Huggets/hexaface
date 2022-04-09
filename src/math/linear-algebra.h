@@ -145,6 +145,25 @@ HxfMat4 hxfMat4TranslationMatrix(const HxfVec3* restrict factor);
  */
 HxfMat4 hxfMat4RotationMatrix(float angle, const HxfVec3* restrict axis);
 
-HxfMat4 hxfPerspectiveProjection(float near, float far, float fov, float aspect);
+/**
+ * @brief Return a perspective projection matrix.
+ * 
+ * @param near The near plane.
+ * @param far The far plane.
+ * @param fov The vertical field of view of the projection.
+ * @param aspect The aspect ratio of the projection.
+ * 
+ * @return The perspective projection.
+ */
+HxfMat4 hxfPerspectiveProjectionMatrix(float near, float far, float fov, float aspect);
 
-HxfMat4 hxfViewMatrix(const HxfVec3* restrict position, const HxfVec3* restrict direction, const HxfVec3* restrict up);
+/**
+ * @brief Return a view matrix.
+ * 
+ * @param position The position of the view.
+ * @param forwardDirection The direction vector that point where the view is looking.
+ * @param upDirection The up vector, pointing to the top.
+ * 
+ * @return The view matrix.
+ */
+HxfMat4 hxfViewMatrix(const HxfVec3* restrict position, const HxfVec3* restrict forwardDirection, const HxfVec3* restrict upDirection);

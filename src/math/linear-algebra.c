@@ -4,7 +4,7 @@
 /* OPERATION */
 
 HxfMat4 hxfMat4MulMat(const HxfMat4* restrict a, const HxfMat4* restrict b) {
-    return (HxfMat4) {
+    const HxfMat4 multiplicationMatrix = {
         {
             {
                 a->mat[0][0] * b->mat[0][0] + a->mat[0][1] * b->mat[1][0] + a->mat[0][2] * b->mat[2][0] + a->mat[0][3] * b->mat[3][0],
@@ -32,23 +32,29 @@ HxfMat4 hxfMat4MulMat(const HxfMat4* restrict a, const HxfMat4* restrict b) {
             }
         }
     };
+
+    return multiplicationMatrix;
 }
 
 HxfVec4 hxfMat4MulVec(const HxfMat4* restrict a, const HxfVec4* restrict b) {
-    return (HxfVec4) {
+    const HxfVec4 multiplicationVector = {
         a->mat[0][0] * b->x + a->mat[0][1] * b->y + a->mat[0][2] * b->z + a->mat[0][3] * b->w,
             a->mat[1][0] * b->x + a->mat[1][1] * b->y + a->mat[1][2] * b->z + a->mat[1][3] * b->w,
             a->mat[2][0] * b->x + a->mat[2][1] * b->y + a->mat[2][2] * b->z + a->mat[2][3] * b->w,
             a->mat[3][0] * b->x + a->mat[3][1] * b->y + a->mat[3][2] * b->z + a->mat[3][3] * b->w
     };
+
+    return multiplicationVector;
 }
 
 HxfVec3 hxfVec3Cross(const HxfVec3* restrict a, const HxfVec3* restrict b) {
-    return (HxfVec3) {
-        a->y* b->z - a->z * b->y,
-            a->z* b->x - a->x * b->z,
-            a->x* b->y - a->y * b->x
+    const HxfVec3 crossProduct = {
+        a->y * b->z - a->z * b->y,
+            a->z * b->x - a->x * b->z,
+            a->x * b->y - a->y * b->x
     };
+
+    return crossProduct;
 }
 
 float hxfVec3Dot(const HxfVec3* restrict a, const HxfVec3* restrict b) {
@@ -56,40 +62,49 @@ float hxfVec3Dot(const HxfVec3* restrict a, const HxfVec3* restrict b) {
 }
 
 HxfVec3 hxfVec3Normalize(const HxfVec3* restrict a) {
-    HxfVec3 ret = *a;
-    const float div = sqrtf(powf(a->x, 2) + powf(a->y, 2) + powf(a->z, 2)); // sqrt(a**2 + b**2 + c**2)
-    ret.x /= div;
-    ret.y /= div;
-    ret.z /= div;
+    const float div = sqrtf(a->x * a->x + a->y * a->y + a->z * a->z); // sqrt(a**2 + b**2 + c**2)
 
-    return ret;
+    const HxfVec3 normalizedVector = {
+        a->x / div,
+        a->y / div,
+        a->z / div
+    };
+
+    return normalizedVector;
 }
 
 HxfVec3 hxfVec3Add(const HxfVec3* restrict a, const HxfVec3* restrict b) {
-    HxfVec3 ret = *a;
-    ret.x += b->x;
-    ret.y += b->y;
-    ret.z += b->z;
-    return ret;
+    const HxfVec3 additionVector = {
+        a->x + b->x,
+        a->y + b->y,
+        a->z + b->z
+    };
+
+    return additionVector;
 }
 
 HxfVec3 hxfVec3Sub(const HxfVec3* restrict a, const HxfVec3* restrict b) {
-    HxfVec3 ret = *a;
-    ret.x -= b->x;
-    ret.y -= b->y;
-    ret.z -= b->z;
-    return ret;
+    const HxfVec3 substractionVector = {
+        a->x - b->x,
+        a->y - b->y,
+        a->z - b->z
+    };
+
+    return substractionVector;
 }
 
 
 /* TRANSFORMATION */
 
 HxfMat4 hxfMat4ScaleMatrix(const HxfVec3* restrict factor) {
-    HxfMat4 res = HXF_MAT4_IDENTITY;
-    res.mat[0][0] *= factor->x;
-    res.mat[1][1] *= factor->y;
-    res.mat[2][2] *= factor->z;
-    return res;
+    const HxfMat4 scaleMatrix = { {
+        { factor->x, 0.0f, 0.0f, 0.0f },
+        { 0.0f, factor->y, 0.0f, 0.0f },
+        { 0.0f, 0.0f, factor->z, 0.0f },
+        { 0.0, 0.0, 0.0f, 1.0f }
+    } };
+
+    return scaleMatrix;
 }
 
 HxfMat4 hxfMat4TranslationMatrix(const HxfVec3* restrict factor) {
@@ -107,58 +122,68 @@ HxfMat4 hxfMat4RotationMatrix(float angle, const HxfVec3* restrict axis) {
     const float cos = cosf(angle);
     const float sin = sinf(angle);
 
+    const float xSin = axis->x * sin;
+    const float ySin = axis->y * sin;
+    const float zSin = axis->z * sin;
+    const float oneMinusCos = 1 - cos;
+    const float xy = axis->x * axis->y;
+    const float xz = axis->x * axis->z;
+    const float yz = axis->y * axis->z;
+
     const HxfMat4 rotationMatrix = { {
         {
-            cos + powf(axis->x, 2) * (1 - cos),
-                axis->x * axis->y * (1 - cos) - axis->z * sin,
-                axis->x * axis->z * (1 - cos) + axis->y * sin,
-                0
+            cos + axis->x * axis->x * oneMinusCos,
+                xy * oneMinusCos - zSin,
+                xz * oneMinusCos + ySin,
+                0.0f
         },
         {
-            axis->y * axis->x * (1 - cos) + axis->z * sin,
-                cos + powf(axis->y, 2) * (1 - cos),
-                axis->y * axis->z * (1 - cos) - axis->x * sin,
-                0
+            xy * oneMinusCos + zSin,
+                cos + axis->y * axis->y * oneMinusCos,
+                yz * oneMinusCos - xSin,
+                0.0f
         },
         {
-            axis->z * axis->x * (1 - cos) - axis->y * sin,
-                axis->z * axis->y * (1 - cos) + axis->x * sin,
-                cos + powf(axis->z, 2) * (1 - cos),
-                0
+            xz * oneMinusCos - ySin,
+                yz * oneMinusCos + xSin,
+                cos + axis->z * axis->z * oneMinusCos,
+                0.0f
         },
         {
-            0,
-                0,
-                0,
-                1
+            0.0f,
+                0.0f,
+                0.0f,
+                1.0f
         }
     } };
 
     return rotationMatrix;
 }
 
-HxfMat4 hxfPerspectiveProjection(float near, float far, float fov, float aspect) {
-    const float tanHalfFovy = tan(fov / 2.f);
-    HxfMat4 projectionMatrix = { 0 };
-    projectionMatrix.mat[0][0] = 1.f / (aspect * tanHalfFovy);
-    projectionMatrix.mat[1][1] = 1.f / (tanHalfFovy);
-    projectionMatrix.mat[2][2] = far / (far - near);
-    projectionMatrix.mat[2][3] = 1.f;
-    projectionMatrix.mat[3][2] = -(far * near) / (far - near);
+HxfMat4 hxfPerspectiveProjectionMatrix(float near, float far, float fov, float aspect) {
+    const float tan = tanf(fov / 2.f);
+    const float farMinusNear = far - near;
+
+    const HxfMat4 projectionMatrix = { {
+        { 1.0f / (aspect * tan), 0.0f, 0.0f, 0.0f },
+        { 0.0f, 1.0f / tan, 0.0f, 0.0f },
+        { 0.0f, 0.0f, far / farMinusNear, 1.0f },
+        { 0.0f, 0.0f, (-far * near) / farMinusNear, 0.0f }
+    } };
+
     return projectionMatrix;
 }
 
-HxfMat4 hxfViewMatrix(const HxfVec3* restrict position, const HxfVec3* restrict direction, const HxfVec3* restrict up) {
-    const HxfVec3 w = hxfVec3Normalize(direction);
-    const HxfVec3 cross = hxfVec3Cross(&w, up);
-    const HxfVec3 u = hxfVec3Normalize(&cross);
-    const HxfVec3 v = hxfVec3Cross(&w, &u);
+HxfMat4 hxfViewMatrix(const HxfVec3* restrict position, const HxfVec3* restrict forwardDirection, const HxfVec3* restrict upDirection) {
+    const HxfVec3 right = hxfVec3Cross(forwardDirection, upDirection);
+    const HxfVec3 normalizedRight = hxfVec3Normalize(&right);
+    const HxfVec3 up = hxfVec3Cross(forwardDirection, &normalizedRight);
 
     const HxfMat4 viewMatrix = { {
-        { u.x, v.x, w.x, 0.0f },
-        { u.y, v.y, w.y, 0.0f },
-        { u.z, v.z, w.z, 0.0f },
-        { -hxfVec3Dot(&u, position), -hxfVec3Dot(&v, position), -hxfVec3Dot(&w, position), 1.0f }
+        { normalizedRight.x, up.x, forwardDirection->x, 0.0f },
+        { normalizedRight.y, up.y, forwardDirection->y, 0.0f },
+        { normalizedRight.z, up.z, forwardDirection->z, 0.0f },
+        { -hxfVec3Dot(&normalizedRight, position), -hxfVec3Dot(&up, position), -hxfVec3Dot(forwardDirection, position), 1.0f }
     } };
 
     return viewMatrix;

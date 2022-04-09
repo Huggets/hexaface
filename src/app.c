@@ -92,7 +92,7 @@ void hxfStartApp(const HxfAppParam* restrict param) {
             .ubo = {
                 .model = HXF_MAT4_IDENTITY,
                 .view = HXF_MAT4_IDENTITY,
-                .projection = hxfPerspectiveProjection(0.1f, 100.0f, M_PI / 180.0f * 60.0f, (float)param->windowWidth / (float)param->windowHeight)
+                .projection = hxfPerspectiveProjectionMatrix(0.01f, 128.0f, M_PI / 180.0f * 60.0f, (float)param->windowWidth / (float)param->windowHeight)
             },
         },
         .camera = {

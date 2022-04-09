@@ -1061,12 +1061,15 @@ static void createRessources(HxfEngine* restrict engine) {
 }
 
 static void updateUniformBufferObject(HxfEngine* restrict engine) {
-    HxfVec3 normalizedDirection = hxfVec3Normalize(&engine->camera->direction);
+    // Update the view matrix according to the camera
+
     engine->drawingData.ubo.view = hxfViewMatrix(
         &engine->camera->position,
-        &normalizedDirection,
+        &engine->camera->direction,
         &engine->camera->up
     );
+
+    // Update the memory
 
     void* data;
     vkMapMemory(
