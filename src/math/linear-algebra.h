@@ -29,6 +29,16 @@ typedef struct HxfVec3 {
 } HxfVec3;
 
 /**
+ * @struct HxfIvec3
+ * @brief A 3 dimensional vector of integer values.
+ */
+typedef struct HxfIvec3 {
+    int x;
+    int y;
+    int z;
+} HxfIvec3;
+
+/**
  * @struct HxfVec4
  * @brief A 4 dimensional vector of float values.
  */

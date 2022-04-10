@@ -14,7 +14,7 @@
  */
 #define HXF_MAX_RENDERED_FRAMES 2
 
-#define HXF_VERTEX_COUNT 24
+#define HXF_VERTEX_COUNT 8
 #define HXF_INDEX_COUNT 36
 #define HXF_CUBE_COUNT HXF_WORLD_LENGTH * HXF_WORLD_LENGTH * HXF_WORLD_LENGTH
 
@@ -58,9 +58,9 @@ typedef struct HxfDrawingData {
      */
     HxfUniformBufferObject ubo;
     /**
-     * @brief Position of each cubes.
+     * @brief Data of each cubes + the pointed cube
      */
-    HxfCubeData cubes[HXF_CUBE_COUNT];
+    HxfCubeData cubes[HXF_CUBE_COUNT + 1];
 
     /**
      * @brief The number of cubes to draw.
@@ -99,6 +99,18 @@ typedef struct HxfDrawingData {
      * @brief Size of the cubes inside the buffer.
      */
     size_t cubesBufferSize;
+    /**
+     * @brief Offset of the cube inside the host memory.
+     */
+    size_t pointedCubeHostOffset;
+    /**
+     * @brief Offset of the cube inside the device memory.
+     */
+    size_t pointedCubeDeviceOffset;
+    /**
+     * @brief Size of the pointed cube data.
+     */
+    size_t pointedCubeSize;
 
     /**
      * @brief Offset of the hostBuffer inside the memory.

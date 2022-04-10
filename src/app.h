@@ -48,7 +48,7 @@ typedef struct HxfAppData {
     HxfWorld world;
 
     /**
-     * @brief If set 0, it indicates that the app should stop.
+     * @brief If set to 0, it indicates that the app should stop.
      */
     int run;
 

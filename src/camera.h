@@ -5,6 +5,7 @@
 #pragma once
 
 #include "math/linear-algebra.h"
+#include "world.h"
 
 /**
  * \struct HxfCamera
@@ -17,4 +18,14 @@ typedef struct HxfCamera {
     HxfVec3 direction; ///< The direction of the view matrix
     float pitch; ///< The pitch of the camera.
     float yaw; ///< The yaw of the camera.
+    HxfIvec3 pointedCube; ///< The coordinate of the cube the camera is pointing to.
+    int isPointingToCube; ///< Set to 1 if the camera is pointing to a cube, 0 otherwise.
 } HxfCamera;
+
+/**
+ * @brief Update the pointed cube.
+ * 
+ * @param camera The camera that is aiming at the cube.
+ * @param world The world where the cubes are.
+ */
+void hxfUpdatePointedCube(HxfCamera* restrict camera, const HxfWorld* restrict world);

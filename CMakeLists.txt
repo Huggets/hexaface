@@ -11,6 +11,7 @@ add_executable(
     src/main.c
     src/hxf.c
     src/app.c
+    src/camera.c
     src/win32/window.c
     src/engine/vulkan.c
     src/engine/pipeline.c

@@ -209,30 +209,30 @@ void hxfInitInput(HxfAppData* restrict app) {
 }
 
 void hxfHandleInput(HxfAppData* restrict app) {
-    const float moveSpeed = 2.0f;
+    const float moveSpeed = 3.0f;
     
     /* MISC KEYS */
 
     if (app->keyboardState.shift) {
-        app->camera.position.y += app->frameDuration;
+        app->camera.position.y -= moveSpeed * app->frameDuration;
     }
     if (app->keyboardState.space) {
-        app->camera.position.y -= app->frameDuration;
+        app->camera.position.y += moveSpeed *app->frameDuration;
     }
 
     /* ARROW KEYS */
 
     if (app->keyboardState.leftArrow) {
-        app->camera.yaw += 3.14f * app->frameDuration;
+        app->camera.yaw -= M_PI * app->frameDuration;
     }
     if (app->keyboardState.rightArrow) {
-        app->camera.yaw -= 3.14f * app->frameDuration;
-    }
-    if (app->keyboardState.upArrow) {
-        app->camera.pitch -= 3.14f * app->frameDuration;
+        app->camera.yaw += M_PI * app->frameDuration;
     }
     if (app->keyboardState.downArrow) {
-        app->camera.pitch += 3.14f * app->frameDuration;
+        app->camera.pitch -= M_PI * app->frameDuration;
+    }
+    if (app->keyboardState.upArrow) {
+        app->camera.pitch += M_PI * app->frameDuration;
     }
 
     /* LETTER KEYS */
@@ -274,13 +274,16 @@ void hxfHandleInput(HxfAppData* restrict app) {
 
     /* COMPUTING */
 
-    // Limits
+    // Limit the pitch
+
     if (app->camera.pitch > 1.570796251f) {
         app->camera.pitch = 1.570796251f;
     }
     else if (app->camera.pitch < -1.570796251f) {
         app->camera.pitch = -1.570796251f;
     }
+
+    // Update the camera direction and front
 
     HxfVec3 direction = {
         cosf(app->camera.yaw) * cosf(app->camera.pitch),

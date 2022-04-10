@@ -15,6 +15,7 @@ static void mainLoop(HxfAppData* restrict app) {
 
         hxfReadWindowMessages(&app->mainWindow);
         hxfHandleInput(app);
+        hxfUpdatePointedCube(&app->camera, &app->world);
         hxfEngineFrame(&app->engine);
 
         app->run = !app->mainWindow.shouldDestroyed;
@@ -24,21 +25,26 @@ static void mainLoop(HxfAppData* restrict app) {
 static void initWorld(HxfAppData* restrict app) {
     const HxfVec3 brown = { 135.0f / 255.0f, 64.0f / 255.0f, 13.0f / 255.0f };
     const HxfVec3 green = { 0.0f, 124.0f / 255.0f, 67.0f / 255.0f };
-    // Fill with brown the bottom
-    for (int y = 6; y != 2; y--) {
-        for (int x = 0; x != 15; x++) {
-            for (int z = 0; z != 15; z++) {
+
+    // Fill the bottom with brown
+
+    for (int y = 0; y != 2; y++) {
+        for (int x = 0; x != HXF_WORLD_LENGTH; x++) {
+            for (int z = 0; z != HXF_WORLD_LENGTH; z++) {
                 app->world.cubes[z][y][x] = 1;
             }
         }
     }
 
-    // A green on top of the brown
-    for (int x = 0; x != 15; x++) {
-        for (int z = 0; z != 15; z++) {
-            app->world.cubes[z][3][x] = 2;
+    // Add a layer of green on top of it
+
+    for (int x = 0; x != HXF_WORLD_LENGTH; x++) {
+        for (int z = 0; z != HXF_WORLD_LENGTH; z++) {
+            app->world.cubes[z][2][x] = 2;
         }
     }
+
+    // Convert cube to drawing data
 
     for (int z = 0; z != HXF_WORLD_LENGTH; z++) {
         for (int y = 0; y != HXF_WORLD_LENGTH; y++) {
@@ -66,28 +72,29 @@ static void initWorld(HxfAppData* restrict app) {
 }
 
 void hxfStartApp(const HxfAppParam* restrict param) {
-    // Define the default app data
+    // Set the default app data
+
     HxfAppData app = {
         .engine.keyboardState = &app.keyboardState,
         .engine.camera = &app.camera,
         .engine.drawingData = {
             .cubesVertices = {
-                {-0.5f, -0.5f, 0.0f},
-                {0.5f, -0.5f, 0.0f},
-                {0.5f, -0.5f, 1.0f},
-                {-0.5f, -0.5f, 1.0f},
-                {-0.5f, 0.5f, 0.0f},
-                {0.5f, 0.5f, 0.0f},
-                {0.5f, 0.5f, 1.0f},
-                {-0.5f, 0.5f, 1.0f},
+                { 0.0f, 1.0f, 0.0f }, 
+                { 0.0f, 1.0f, 1.0f },
+                { 1.0f, 1.0f, 1.0f },
+                { 1.0f, 1.0f, 0.0f },
+                { 0.0f, 0.0f, 0.0f }, 
+                { 0.0f, 0.0f, 1.0f },
+                { 1.0f, 0.0f, 1.0f },
+                { 1.0f, 0.0f, 0.0f }
             },
             .cubesVertexIndices = {
                 0, 1, 2, 2, 3, 0,
-                3, 2, 6, 6, 7, 3,
-                7, 6, 5, 5, 4, 7,
-                4, 5, 1, 1, 0, 4,
-                2, 1, 5, 5, 6, 2,
-                0, 3, 7, 7, 4, 0
+                1, 5, 6, 6, 2, 1,
+                5, 4, 7, 7, 6, 5,
+                4, 0, 3, 3, 7, 4,
+                2, 6, 7, 7, 3, 2,
+                0, 4, 5, 5, 1, 0
             },
             .ubo = {
                 .model = HXF_MAT4_IDENTITY,
@@ -96,19 +103,16 @@ void hxfStartApp(const HxfAppParam* restrict param) {
             },
         },
         .camera = {
-            .position = { 0.0f, 0.0f, 2.0f },
-            .up = { 0.0f, -1.0f, 0.0f },
-            .yaw = -M_PI_2,
+            .position = { 0.0f, 3.0f, -2.0f },
+            .up = { 0.0f, 1.0f, 0.0f },
+            .yaw = 0.0f,
             .pitch = 0.0f,
         },
         .run = 1,
     };
 
-    // Scale the model matrix by 0.5
-    const HxfVec3 scaleVector = { 0.125f, 0.125f, 0.125f };
-    app.engine.drawingData.ubo.model = hxfMat4ScaleMatrix(&scaleVector);
-
     // Create the main window
+
     HxfWindowParam windowParameter = {
         param->hInstance,
         param->nCmdShow,
@@ -119,14 +123,17 @@ void hxfStartApp(const HxfAppParam* restrict param) {
     app.engine.mainWindow = &app.mainWindow;
 
     // Initialization
+
     hxfInitInput(&app);
     initWorld(&app);
     hxfInitEngine(&app.engine);
 
     // Run the main loop
+
     mainLoop(&app);
 
     // Stop the application
+
     hxfStopEngine(&app.engine);
     hxfDestroyEngine(&app.engine);
     hxfDestroyMainWindow(&app.mainWindow);
