@@ -559,7 +559,7 @@ static void recordDrawCommandBuffer(HxfEngine* restrict engine, uint32_t imageIn
     };
     VkDeviceSize offsets[] = {
         engine->drawingData.cubesVerticesBufferOffset,
-        engine->drawingData.cubesBufferOffset
+        engine->drawingData.facesBufferOffset
     };
     vkCmdBindVertexBuffers(engine->drawCommandBuffers[currentFrameIndex], 0, 2, boundBuffers, offsets);
     vkCmdBindIndexBuffer(engine->drawCommandBuffers[currentFrameIndex], engine->drawingData.deviceBuffer, engine->drawingData.cubesVertexIndicesBufferOffset, VK_INDEX_TYPE_UINT32);
@@ -567,12 +567,18 @@ static void recordDrawCommandBuffer(HxfEngine* restrict engine, uint32_t imageIn
     // The pointed cube
 
     if (engine->camera->isPointingToCube) {
-        vkCmdDrawIndexed(engine->drawCommandBuffers[currentFrameIndex], HXF_INDEX_COUNT, 1, 0, 0, HXF_CUBE_COUNT);
+        vkCmdDrawIndexed(engine->drawCommandBuffers[currentFrameIndex], HXF_INDEX_COUNT, 1, 0, 0, HXF_CUBE_COUNT * 6);
     }
 
     // All the cubes
+    // (A draw call for each faces)
 
-    vkCmdDrawIndexed(engine->drawCommandBuffers[currentFrameIndex], HXF_INDEX_COUNT, engine->drawingData.cubeCount, 0, 0, 0);
+    vkCmdDrawIndexed(engine->drawCommandBuffers[currentFrameIndex], 6, engine->drawingData.faceTopCount, 0, 0, 0);
+    vkCmdDrawIndexed(engine->drawCommandBuffers[currentFrameIndex], 6, engine->drawingData.faceBackCount, 6, 0, HXF_CUBE_COUNT * 1);
+    vkCmdDrawIndexed(engine->drawCommandBuffers[currentFrameIndex], 6, engine->drawingData.faceBottomCount, 12, 0, HXF_CUBE_COUNT * 2);
+    vkCmdDrawIndexed(engine->drawCommandBuffers[currentFrameIndex], 6, engine->drawingData.faceFrontCount, 18, 0, HXF_CUBE_COUNT * 3);
+    vkCmdDrawIndexed(engine->drawCommandBuffers[currentFrameIndex], 6, engine->drawingData.faceRightCount, 24, 0, HXF_CUBE_COUNT * 4);
+    vkCmdDrawIndexed(engine->drawCommandBuffers[currentFrameIndex], 6, engine->drawingData.faceLeftCount, 30, 0, HXF_CUBE_COUNT * 5);
 
     vkCmdEndRenderPass(engine->drawCommandBuffers[currentFrameIndex]);
 
@@ -808,7 +814,7 @@ static void computeMemoryNeed(HxfEngine* restrict engine, VkDeviceSize* restrict
 
     // Buffer architecture:
     // host buffer: ubo
-    // device buffer: vertices, indices, cubes (including the pointed cube)
+    // device buffer: vertices, indices, faces + the pointed cube, texture color
 
     VkDeviceSize* hostBufferSizeNeeded = &sizes[0];
     VkDeviceSize* deviceBufferSizeNeeded = &sizes[1];
@@ -850,19 +856,20 @@ static void computeMemoryNeed(HxfEngine* restrict engine, VkDeviceSize* restrict
         engine->drawingData.cubesVertexIndicesBufferOffset
         + engine->drawingData.cubesVertexIndicesBufferSize;
 
-    // cubes
+    // faces
 
-    engine->drawingData.cubesBufferOffset = currentBufferSize;
-    engine->drawingData.cubesBufferSize = sizeof(engine->drawingData.cubes);
+    engine->drawingData.facesBufferOffset = currentBufferSize;
+    engine->drawingData.facesBufferSize = sizeof(engine->drawingData.faces);
     currentBufferSize =
-        engine->drawingData.cubesBufferOffset
-        + engine->drawingData.cubesBufferSize;
+        engine->drawingData.facesBufferOffset
+        + engine->drawingData.facesBufferSize;
 
     // pointed cube
 
-    engine->drawingData.pointedCubeDeviceOffset = currentBufferSize - sizeof(HxfCubeData);
+    engine->drawingData.pointedCubeDeviceOffset = currentBufferSize;
+    currentBufferSize = engine->drawingData.pointedCubeDeviceOffset + engine->drawingData.pointedCubeSize;
 
-    *deviceBufferSizeNeeded = currentBufferSize + sizeof(HxfCubeData);
+    *deviceBufferSizeNeeded = currentBufferSize;
 
     // depth image
 
@@ -953,7 +960,7 @@ static void allocateMemory(HxfEngine* restrict engine, VkDeviceSize* restrict si
     }
     memcpy(data, engine->drawingData.cubesVertices, engine->drawingData.cubesVerticesBufferSize);
     memcpy(data + engine->drawingData.cubesVertexIndicesBufferOffset, engine->drawingData.cubesVertexIndices, engine->drawingData.cubesVertexIndicesBufferSize);
-    memcpy(data + engine->drawingData.cubesBufferOffset, engine->drawingData.cubes, engine->drawingData.cubesBufferSize);
+    memcpy(data + engine->drawingData.facesBufferOffset, engine->drawingData.faces, engine->drawingData.facesBufferSize);
     vkUnmapMemory(engine->device, engine->hostMemory);
 
     // Transfer the data
@@ -1143,9 +1150,14 @@ static void updatePointedCubeBuffer(HxfEngine* restrict engine) {
         HXF_MSG_ERROR("Could not map memory");
         exit(EXIT_FAILURE);
     }
+
+    const HxfVec3 selectedColor = { -0.15f, -0.15f, -0.15f };
     const HxfCubeData pointedCube = {
         { (float)engine->camera->pointedCube.x, (float)engine->camera->pointedCube.y, (float)engine->camera->pointedCube.z },
-        { 0.5f, 0.5f, 0.5f },
+        hxfVec3Add(
+            &engine->drawingData.textures[engine->world->cubes[engine->camera->pointedCube.x][engine->camera->pointedCube.y][engine->camera->pointedCube.z]],
+            &selectedColor
+        ),
     };
 
     memcpy(data, &pointedCube, sizeof(pointedCube));

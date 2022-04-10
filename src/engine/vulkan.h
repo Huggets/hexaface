@@ -16,7 +16,9 @@
 
 #define HXF_VERTEX_COUNT 8
 #define HXF_INDEX_COUNT 36
-#define HXF_CUBE_COUNT HXF_WORLD_LENGTH * HXF_WORLD_LENGTH * HXF_WORLD_LENGTH
+#define HXF_CUBE_COUNT (HXF_WORLD_LENGTH * HXF_WORLD_LENGTH * HXF_WORLD_LENGTH)
+
+#define HXF_TEXTURE_COUNT 3
 
 typedef struct HxfCubeData {
     HxfVec3 cubePosition;
@@ -58,14 +60,36 @@ typedef struct HxfDrawingData {
      */
     HxfUniformBufferObject ubo;
     /**
-     * @brief Data of each cubes + the pointed cube
+     * @brief Data for each faces of the cubes.
+     *
+     * Top, back, bottom, front, right, left.
      */
-    HxfCubeData cubes[HXF_CUBE_COUNT + 1];
+    HxfCubeData faces[6][HXF_CUBE_COUNT];
 
     /**
-     * @brief The number of cubes to draw.
+     * @brief The number of front face to draw.
      */
-    size_t cubeCount;
+    size_t faceFrontCount;
+    /**
+     * @brief The number of back face to draw.
+     */
+    size_t faceBackCount;
+    /**
+     * @brief The number of top face to draw.
+     */
+    size_t faceTopCount;
+    /**
+     * @brief The number of bottom face to draw.
+     */
+    size_t faceBottomCount;
+    /**
+     * @brief The number of right face to draw.
+     */
+    size_t faceRightCount;
+    /**
+     * @brief The number of left face to draw.
+     */
+    size_t faceLeftCount;
 
     /**
      * @brief Offset of the vertex positions in the buffer.
@@ -94,11 +118,11 @@ typedef struct HxfDrawingData {
     /**
      * @brief Offset of the cubes inside the buffer.
      */
-    size_t cubesBufferOffset;
+    size_t facesBufferOffset;
     /**
      * @brief Size of the cubes inside the buffer.
      */
-    size_t cubesBufferSize;
+    size_t facesBufferSize;
     /**
      * @brief Offset of the cube inside the host memory.
      */
@@ -120,6 +144,13 @@ typedef struct HxfDrawingData {
      * @brief Offset of the vertxDeviceBuffer inside the memory.
      */
     size_t deviceBufferMemoryOffset;
+
+    /**
+     * @brief Contains the textures color of all the cubes.
+     *
+     * The index is the id of the texture.
+     */
+    HxfVec3 textures[HXF_TEXTURE_COUNT];
 } HxfDrawingData;
 
 typedef struct HxfEngine {
@@ -128,6 +159,7 @@ typedef struct HxfEngine {
 
     const HxfKeyboardState* keyboardState;
     const HxfCamera* camera;
+    const HxfWorld* world;
 
     VkInstance instance;
     VkPhysicalDevice physicalDevice;
@@ -168,7 +200,7 @@ typedef struct HxfEngine {
 
     /**
      * @brief Fence that can be used for anything.
-     * 
+     *
      * It is used when transfering data from one buffer to another.
      */
     VkFence fence;
@@ -178,7 +210,7 @@ typedef struct HxfEngine {
 
     /**
      * @brief Data relative to the drawing.
-     * 
+     *
      * It contains the vertex position, the index buffer, the MVP matrix...
      */
     HxfDrawingData drawingData;

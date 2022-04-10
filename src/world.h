@@ -11,5 +11,5 @@ typedef struct HxfWorld {
     /**
      * @brief An array containing all the cubes of the world.
      */
-    uint8_t cubes[HXF_WORLD_LENGTH][HXF_WORLD_LENGTH][HXF_WORLD_LENGTH];
+    uint32_t cubes[HXF_WORLD_LENGTH][HXF_WORLD_LENGTH][HXF_WORLD_LENGTH];
 } HxfWorld;
