@@ -93,6 +93,30 @@ HxfVec3 hxfVec3Sub(const HxfVec3* restrict a, const HxfVec3* restrict b) {
     return substractionVector;
 }
 
+HxfIvec3 roundVector(HxfVec3* restrict vec) {
+    HxfIvec3 roundedVector;
+
+    if (vec->x < 0) {
+        roundedVector.x = (int)floorf(vec->x);
+    }
+    else {
+        roundedVector.x = (int)vec->x;
+    }
+    if (vec->y < 0) {
+        roundedVector.y = (int)floorf(vec->y);
+    }
+    else {
+        roundedVector.y = (int)vec->y;
+    }
+    if (vec->z < 0) {
+        roundedVector.z = (int)floorf(vec->z);
+    }
+    else {
+        roundedVector.z = (int)vec->z;
+    }
+
+    return roundedVector;
+}
 
 /* TRANSFORMATION */
 

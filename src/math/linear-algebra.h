@@ -136,6 +136,17 @@ HxfVec3 hxfVec3Add(const HxfVec3* restrict a, const HxfVec3* restrict b);
  */
 HxfVec3 hxfVec3Sub(const HxfVec3* restrict a, const HxfVec3* restrict b);
 
+/**
+ * @brief Round the vector’s value to the smallest value.
+ * 
+ * e.g: 2.1 become 2, 6.8 become 6, -3.3 become -4 and -8.9 become -9.
+ * 
+ * @param vec The vector to round.
+ * 
+ * @return The rounded vector. 
+ */
+HxfIvec3 roundVector(HxfVec3* restrict vec);
+
 /* TRANSFORMATION */
 
 /**

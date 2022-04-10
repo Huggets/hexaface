@@ -10,6 +10,6 @@
  * 
  * @param app The application that initializes the input.
  */
-void hxfInitInput(HxfAppData* restrict app);
+void hxfInitInput(HxfAppData* app);
 
 void hxfHandleInput(HxfAppData* restrict app);

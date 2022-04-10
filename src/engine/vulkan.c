@@ -126,7 +126,7 @@ static void getVulkanLimits(HxfEngine* restrict engine);
  * @param engine A pointer to the HxfEngine that hold the memory.
  * @param sizes An array of 2 VkDeviceSize that will be modified.
  */
-static void computeMemoryNeed(HxfEngine* restrict engine, VkDeviceSize* restrict sizes);
+static void computeMemoryNeeds(HxfEngine* restrict engine, VkDeviceSize* restrict sizes);
 
 /**
  * @brief Allocate host and device memory, then copy the data to it.
@@ -807,17 +807,18 @@ static void createSyncObjects(HxfEngine* restrict engine) {
 }
 
 
-static void computeMemoryNeed(HxfEngine* restrict engine, VkDeviceSize* restrict sizes) {
+static void computeMemoryNeeds(HxfEngine* restrict engine, VkDeviceSize* restrict sizes) {
     // Memory architecture:
-    // host memory: host buffer, + pointed cube staging buffer
+    // host memory: host buffer, + pointed cube staging buffer, faces transfer buffer
     // device memory: depth image, device buffer
 
     // Buffer architecture:
     // host buffer: ubo
-    // device buffer: vertices, indices, faces + the pointed cube, texture color
+    // device buffer: vertices, indices, faces + the pointed cube
 
     VkDeviceSize* hostBufferSizeNeeded = &sizes[0];
     VkDeviceSize* deviceBufferSizeNeeded = &sizes[1];
+
     size_t currentBufferSize = 0; ///< Size of the current buffer, this value increase each time data is appended
 
     /* HOST MEMORY */
@@ -831,10 +832,14 @@ static void computeMemoryNeed(HxfEngine* restrict engine, VkDeviceSize* restrict
 
     *hostBufferSizeNeeded = currentBufferSize;
 
-    /* Pointed cube */
+    // Pointed cube
 
     engine->drawingData.pointedCubeHostOffset = currentBufferSize;
     engine->drawingData.pointedCubeSize = sizeof(HxfCubeData);
+
+    // transfer buffer
+
+    engine->drawingData.facesSrcTransferBufferOffset = engine->drawingData.pointedCubeHostOffset + engine->drawingData.pointedCubeSize;
 
     /* DEVICE MEMORY */
 
@@ -889,7 +894,19 @@ static void allocateMemory(HxfEngine* restrict engine, VkDeviceSize* restrict si
     const VkDeviceSize* const restrict hostBufferSize = &sizes[0];
     const VkDeviceSize* const restrict deviceBufferSize = &sizes[1];
 
+    VkMemoryRequirements hostBufferSizeRequired;
+    vkGetBufferMemoryRequirements(engine->device, engine->drawingData.hostBuffer, &hostBufferSizeRequired);
+
+    // The amount of memory needed for the host memory.
+    const VkDeviceSize hostMemorySizeNeeded = max(hostBufferSizeRequired.size + engine->drawingData.pointedCubeSize + engine->drawingData.facesBufferSize, *deviceBufferSize); // for staging buffer
+    // The amount of memory needed for the device memory.
+    const VkDeviceSize deviceMemorySizeNeeded = engine->depthImageMemorySize + *deviceBufferSize;
+
     // Create two buffers that will transfer the data from the host memory to the device memory
+
+    // TODO maybe remove these two buffer and use the transfer buffers (transferSrcBuffer and transferDstBuffer)
+    // that are also used for transfering the faces data.
+
     VkBuffer srcBuffer;
     VkBuffer dstBuffer;
     VkBufferCreateInfo bufferInfo = {
@@ -914,17 +931,13 @@ static void allocateMemory(HxfEngine* restrict engine, VkDeviceSize* restrict si
     // It allocate the maximum between the host buffer required size and the device buffer required size
     // as it will store these two buffers but not at the same time.
 
-    VkMemoryRequirements hostBufferSizeRequired;
-    vkGetBufferMemoryRequirements(engine->device, engine->drawingData.hostBuffer, &hostBufferSizeRequired);
-    const VkDeviceSize hostMemorySize = max(hostBufferSizeRequired.size + engine->drawingData.pointedCubeSize, *deviceBufferSize); // for staging buffer
-
     VkBuffer requiredBuffers[] = {
         engine->drawingData.hostBuffer,
         srcBuffer
     };
     VkMemoryAllocateInfo allocInfo = {
         .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
-        .allocationSize = hostMemorySize,
+        .allocationSize = hostMemorySizeNeeded,
         .memoryTypeIndex = getMemoryTypeIndex(engine, 2, requiredBuffers, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
     };
     if (vkAllocateMemory(engine->device, &allocInfo, NULL, &engine->hostMemory)) {
@@ -936,7 +949,7 @@ static void allocateMemory(HxfEngine* restrict engine, VkDeviceSize* restrict si
 
     requiredBuffers[0] = engine->drawingData.deviceBuffer;
     requiredBuffers[1] = dstBuffer;
-    allocInfo.allocationSize = engine->depthImageMemorySize + *deviceBufferSize; // Depth image + device buffer
+    allocInfo.allocationSize = deviceMemorySizeNeeded; // Depth image + device buffer
     allocInfo.memoryTypeIndex = getMemoryTypeIndex(engine, 2, requiredBuffers, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
     if (vkAllocateMemory(engine->device, &allocInfo, NULL, &engine->deviceMemory)) {
         HXF_MSG_ERROR("Could not allocate device memory");
@@ -950,6 +963,9 @@ static void allocateMemory(HxfEngine* restrict engine, VkDeviceSize* restrict si
 
     vkBindBufferMemory(engine->device, engine->drawingData.hostBuffer, engine->hostMemory, 0);
     vkBindBufferMemory(engine->device, engine->drawingData.deviceBuffer, engine->deviceMemory, engine->drawingData.deviceBufferMemoryOffset);
+
+    vkBindBufferMemory(engine->device, engine->drawingData.facesSrcTransferBuffer, engine->hostMemory, engine->drawingData.facesSrcTransferBufferOffset);
+    vkBindBufferMemory(engine->device, engine->drawingData.facesDstTransferBuffer, engine->deviceMemory, engine->drawingData.deviceBufferMemoryOffset + engine->drawingData.facesBufferOffset);
 
     // Write to host memory the data that will be transfered
 
@@ -982,6 +998,7 @@ static void allocateMemory(HxfEngine* restrict engine, VkDeviceSize* restrict si
 
 static void createBuffers(HxfEngine* restrict engine, const VkDeviceSize* restrict bufferSizes) {
     // Host buffer
+
     VkBufferCreateInfo bufferInfo = {
         .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
         .size = bufferSizes[0],
@@ -996,10 +1013,28 @@ static void createBuffers(HxfEngine* restrict engine, const VkDeviceSize* restri
     }
 
     // Vertex device buffer
+
     bufferInfo.size = bufferSizes[1];
     bufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
     if (vkCreateBuffer(engine->device, &bufferInfo, NULL, &engine->drawingData.deviceBuffer)) {
         HXF_MSG_ERROR("Could not create the vertex device buffer");
+        exit(EXIT_FAILURE);
+    }
+
+    // faces transfer src
+
+    bufferInfo.size = engine->drawingData.facesBufferSize;
+    bufferInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+    if (vkCreateBuffer(engine->device, &bufferInfo, NULL, &engine->drawingData.facesSrcTransferBuffer)) {
+        HXF_MSG_ERROR("Could not create the faces src transfer buffer");
+        exit(EXIT_FAILURE);
+    }
+
+    // faces transfer dst
+
+    bufferInfo.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+    if (vkCreateBuffer(engine->device, &bufferInfo, NULL, &engine->drawingData.facesDstTransferBuffer)) {
+        HXF_MSG_ERROR("Could not create the faces dst transfer buffer");
         exit(EXIT_FAILURE);
     }
 }
@@ -1081,7 +1116,7 @@ static void createRessources(HxfEngine* restrict engine) {
     createDepthImage(engine);
 
     VkDeviceSize sizes[2] = {};
-    computeMemoryNeed(engine, sizes);
+    computeMemoryNeeds(engine, sizes);
 
     const VkDeviceSize hostBufferSizeNeeded = sizes[0];
     const VkDeviceSize vertexDeviceBufferSizeNeeded = sizes[1];
@@ -1211,6 +1246,8 @@ void hxfDestroyEngine(HxfEngine* restrict engine) {
     vkDestroyImageView(engine->device, engine->depthImageView, NULL);
     vkDestroyImage(engine->device, engine->depthImage, NULL);
 
+    vkDestroyBuffer(engine->device, engine->drawingData.facesSrcTransferBuffer, NULL);
+    vkDestroyBuffer(engine->device, engine->drawingData.facesDstTransferBuffer, NULL);
     vkDestroyBuffer(engine->device, engine->drawingData.deviceBuffer, NULL);
     vkDestroyBuffer(engine->device, engine->drawingData.hostBuffer, NULL);
     vkFreeMemory(engine->device, engine->deviceMemory, NULL);
@@ -1282,4 +1319,16 @@ void hxfEngineFrame(HxfEngine* restrict engine) {
 
 void hxfStopEngine(HxfEngine* restrict engine) {
     vkDeviceWaitIdle(engine->device);
+}
+
+void hxfEngineUpdateCubeBuffer(HxfEngine* restrict engine) {// Host buffer
+    void* data;
+    if (vkMapMemory(engine->device, engine->hostMemory, engine->drawingData.facesSrcTransferBufferOffset, engine->drawingData.facesBufferSize, 0, &data)) {
+        HXF_MSG_ERROR("Could not map memory");
+        exit(EXIT_FAILURE);
+    }
+    memcpy(data, engine->drawingData.faces, engine->drawingData.facesBufferSize);
+    vkUnmapMemory(engine->device, engine->hostMemory);
+
+    transferBuffers(engine, engine->drawingData.facesSrcTransferBuffer, engine->drawingData.facesDstTransferBuffer, 0, 0, engine->drawingData.facesBufferSize);
 }

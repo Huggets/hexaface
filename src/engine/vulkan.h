@@ -47,6 +47,10 @@ typedef struct HxfDrawingData {
      */
     VkBuffer deviceBuffer;
 
+    VkBuffer facesSrcTransferBuffer;
+    VkBuffer facesDstTransferBuffer;
+    size_t facesSrcTransferBufferOffset;
+
     /**
      * @brief The vertex position used to draw a cube.
      */
@@ -247,3 +251,10 @@ void hxfEngineFrame(HxfEngine* restrict engine);
  * @param engine The engine to stop.
  */
 void hxfStopEngine(HxfEngine* restrict engine);
+
+/**
+ * @brief Update the buffer that contains the cubes data.
+ *
+ * @param engine The engine that hold the buffer.
+ */
+void hxfEngineUpdateCubeBuffer(HxfEngine* restrict engine);

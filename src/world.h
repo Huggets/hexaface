@@ -16,5 +16,3 @@ typedef struct HxfWorld {
      */
     uint32_t cubes[HXF_WORLD_LENGTH][HXF_WORLD_LENGTH][HXF_WORLD_LENGTH];
 } HxfWorld;
-
-void hxfReplaceCube(const HxfVec3* restrict position, uint32_t textureIndex);

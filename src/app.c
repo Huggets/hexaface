@@ -16,7 +16,7 @@ static void mainLoop(HxfAppData* restrict app) {
 
         hxfReadWindowMessages(&app->mainWindow);
         hxfHandleInput(app);
-        hxfUpdatePointedCube(&app->game.camera, &app->game.world);
+        hxfGameFrame(&app->game);
         hxfEngineFrame(&app->engine);
 
         app->run = !app->mainWindow.shouldDestroyed;

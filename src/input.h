@@ -126,4 +126,5 @@ typedef struct HxfKeyboardState {
     int rightArrow;
     int upArrow;
     int downArrow;
+    int escape;
 } HxfKeyboardState;

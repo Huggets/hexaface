@@ -20,6 +20,7 @@ typedef struct HxfCamera {
     float yaw; ///< The yaw of the camera.
     HxfIvec3 pointedCube; ///< The coordinate of the cube the camera is pointing to.
     int isPointingToCube; ///< Set to 1 if the camera is pointing to a cube, 0 otherwise.
+    HxfIvec3 nearPointedCube; ///< The cube that is just before the pointed cube. Especially used to place a cube.
 } HxfCamera;
 
 /**
