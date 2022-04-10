@@ -26,9 +26,16 @@ typedef struct HxfGameData {
 /**
  * @brief Initialize the game.
  *
- * @param app A pointer to the application that hold the game.
+ * @param game A pointer to the game.
  */
 void hxfInitGame(HxfGameData* restrict game);
+
+/**
+ * @brief Stop the game.
+ * 
+ * @param game A pointer to the game.
+ */
+void hxfStopGame(HxfGameData* restrict game);
 
 /**
  * @brief Run a single game frame.

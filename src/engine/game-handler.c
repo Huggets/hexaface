@@ -65,15 +65,18 @@ static void initWorld(HxfGameData* restrict game) {
     game->world.cubes[0][3][0] = 2;
     game->world.cubes[0][4][0] = 2;
     game->world.cubes[0][3][1] = 2;
-
-    // Convert cube to drawing data
-
-    updateDrawingFaces(game);
 }
 
 void hxfInitGame(HxfGameData* restrict game) {
-    initWorld(game);
+    hxfWorldLoad("world", &game->world);
+
+    // initWorld(game);
+    updateDrawingFaces(game);
     game->cubeSelector = 1;
+}
+
+void hxfStopGame(HxfGameData* restrict game) {
+    hxfWorldSave("world", &game->world);
 }
 
 void hxfGameFrame(HxfGameData* restrict game) {

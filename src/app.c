@@ -94,6 +94,7 @@ void hxfStartApp(const HxfAppParam* restrict param) {
     // Stop the application
 
     hxfStopEngine(&app.engine);
+    hxfStopGame(&app.game);
     hxfDestroyEngine(&app.engine);
     hxfDestroyMainWindow(&app.mainWindow);
 }
