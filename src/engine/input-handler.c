@@ -8,7 +8,7 @@ static void emptyCallback(void* param) { }
 
 /* MISC KEYS */
 
-static void escapeKeyCallback(void* param) {
+static void escapeKeyDown(void* param) {
     HxfWindow* window = (HxfWindow*)param;
     window->shouldDestroyed = 1;
 }
@@ -169,7 +169,7 @@ void hxfInitInput(HxfAppData* restrict app) {
     }
 
     // Set the custom callbacks that are needed
-    hxfSetKeyDownCallback(&app->mainWindow, HXF_KEY_ESCAPE, escapeKeyCallback, &app->mainWindow);
+    hxfSetKeyDownCallback(&app->mainWindow, HXF_KEY_ESCAPE, escapeKeyDown, &app->mainWindow);
 
     hxfSetKeyDownCallback(&app->mainWindow, HXF_KEY_LEFT, leftKeyDown, &app->keyboardState);
     hxfSetKeyDownCallback(&app->mainWindow, HXF_KEY_RIGHT, rightKeyDown, &app->keyboardState);
@@ -214,84 +214,84 @@ void hxfHandleInput(HxfAppData* restrict app) {
     /* MISC KEYS */
 
     if (app->keyboardState.shift) {
-        app->camera.position.y -= moveSpeed * app->frameDuration;
+        app->game.camera.position.y -= moveSpeed * app->frameDuration;
     }
     if (app->keyboardState.space) {
-        app->camera.position.y += moveSpeed *app->frameDuration;
+        app->game.camera.position.y += moveSpeed *app->frameDuration;
     }
 
     /* ARROW KEYS */
 
     if (app->keyboardState.leftArrow) {
-        app->camera.yaw -= M_PI * app->frameDuration;
+        app->game.camera.yaw -= M_PI * app->frameDuration;
     }
     if (app->keyboardState.rightArrow) {
-        app->camera.yaw += M_PI * app->frameDuration;
+        app->game.camera.yaw += M_PI * app->frameDuration;
     }
     if (app->keyboardState.downArrow) {
-        app->camera.pitch -= M_PI * app->frameDuration;
+        app->game.camera.pitch -= M_PI * app->frameDuration;
     }
     if (app->keyboardState.upArrow) {
-        app->camera.pitch += M_PI * app->frameDuration;
+        app->game.camera.pitch += M_PI * app->frameDuration;
     }
 
     /* LETTER KEYS */
 
     if (app->keyboardState.z) {
-        HxfVec3 tmp = app->camera.front;
+        HxfVec3 tmp = app->game.camera.front;
         tmp.x *= app->frameDuration * moveSpeed;
         tmp.y *= app->frameDuration * moveSpeed;
         tmp.z *= app->frameDuration * moveSpeed;
 
-        app->camera.position = hxfVec3Add(&app->camera.position, &tmp);
+        app->game.camera.position = hxfVec3Add(&app->game.camera.position, &tmp);
     }
     if (app->keyboardState.s) {
-        HxfVec3 tmp = app->camera.front;
+        HxfVec3 tmp = app->game.camera.front;
         tmp.x *= app->frameDuration * moveSpeed;
         tmp.y *= app->frameDuration * moveSpeed;
         tmp.z *= app->frameDuration * moveSpeed;
 
-        app->camera.position = hxfVec3Sub(&app->camera.position, &tmp);
+        app->game.camera.position = hxfVec3Sub(&app->game.camera.position, &tmp);
     }
     if (app->keyboardState.q) {
-        HxfVec3 tmp = hxfVec3Cross(&app->camera.front, &app->camera.up);
+        HxfVec3 tmp = hxfVec3Cross(&app->game.camera.front, &app->game.camera.up);
         tmp = hxfVec3Normalize(&tmp);
         tmp.x *= -app->frameDuration * moveSpeed;
         tmp.y *= -app->frameDuration * moveSpeed;
         tmp.z *= -app->frameDuration * moveSpeed;
 
-        app->camera.position = hxfVec3Add(&app->camera.position, &tmp);
+        app->game.camera.position = hxfVec3Add(&app->game.camera.position, &tmp);
     }
     if (app->keyboardState.d) {
-        HxfVec3 tmp = hxfVec3Cross(&app->camera.front, &app->camera.up);
+        HxfVec3 tmp = hxfVec3Cross(&app->game.camera.front, &app->game.camera.up);
         tmp = hxfVec3Normalize(&tmp);
         tmp.x *= app->frameDuration * moveSpeed;
         tmp.y *= app->frameDuration * moveSpeed;
         tmp.z *= app->frameDuration * moveSpeed;
 
-        app->camera.position = hxfVec3Add(&app->camera.position, &tmp);
+        app->game.camera.position = hxfVec3Add(&app->game.camera.position, &tmp);
     }
 
     /* COMPUTING */
 
     // Limit the pitch
 
-    if (app->camera.pitch > 1.570796251f) {
-        app->camera.pitch = 1.570796251f;
+    if (app->game.camera.pitch > 1.570796251f) {
+        app->game.camera.pitch = 1.570796251f;
     }
-    else if (app->camera.pitch < -1.570796251f) {
-        app->camera.pitch = -1.570796251f;
+    else if (app->game.camera.pitch < -1.570796251f) {
+        app->game.camera.pitch = -1.570796251f;
     }
 
     // Update the camera direction and front
 
     HxfVec3 direction = {
-        cosf(app->camera.yaw) * cosf(app->camera.pitch),
-        sinf(app->camera.pitch),
-        sinf(app->camera.yaw) * cosf(app->camera.pitch)
+        cosf(app->game.camera.yaw) * cosf(app->game.camera.pitch),
+        sinf(app->game.camera.pitch),
+        sinf(app->game.camera.yaw) * cosf(app->game.camera.pitch)
     };
-    app->camera.direction = direction;
-    app->camera.front = direction;
-    app->camera.front.y = 0.f;
-    app->camera.front = hxfVec3Normalize(&app->camera.front);
+    app->game.camera.direction = direction;
+    app->game.camera.front = direction;
+    app->game.camera.front.y = 0.f;
+    app->game.camera.front = hxfVec3Normalize(&app->game.camera.front);
 }

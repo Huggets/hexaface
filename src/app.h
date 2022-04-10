@@ -13,6 +13,7 @@
 #include "camera.h"
 #include "world.h"
 #include "engine/vulkan.h"
+#include "engine/game-handler.h"
 
 /**
  * @struct HxfAppData
@@ -38,14 +39,9 @@ typedef struct HxfAppData {
     HxfKeyboardState keyboardState;
 
     /**
-     * @brief The camera where the scene is viewed by the player.
+     * @brief Contains the game objects.
      */
-    HxfCamera camera;
-
-    /**
-     * @brief The world that is made of cubes.
-     */
-    HxfWorld world;
+    HxfGameData game;
 
     /**
      * @brief If set to 0, it indicates that the app should stop.
