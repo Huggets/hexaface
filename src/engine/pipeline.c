@@ -198,8 +198,8 @@ static void createDescriptors(HxfEngine* restrict engine) {
     for (int i = 0; i != HXF_MAX_RENDERED_FRAMES; i++) {
         VkDescriptorBufferInfo bufferInfo = {
             .buffer = engine->drawingData.hostBuffer,
-            .offset = engine->drawingData.uboBufferOffset,
-            .range = engine->drawingData.uboBufferSize,
+            .offset = engine->drawingData.uboOffset,
+            .range = engine->drawingData.uboSize,
         };
         VkDescriptorImageInfo imageInfo = {
             .sampler = engine->drawingData.textureSampler,

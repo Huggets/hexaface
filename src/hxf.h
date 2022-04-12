@@ -6,7 +6,16 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+/**
+ * @brief Print an error message to the error output.
+ */
 #define HXF_MSG_ERROR(msg, ...) fprintf(stderr, "error: "msg"\n",##__VA_ARGS__);
+/**
+ * @brief Print an error message to the error output and exit with an EXIT_FAILURE status.
+ */
+#define HXF_FATAL(msg, ...) fprintf(stderr, "fatal error: "msg"\n",##__VA_ARGS__); exit(EXIT_FAILURE);
+
+#define HXF_TRY_VK(funcCall) if (funcCall != VK_SUCCESS) { fprintf(stderr, "runtime error in file %s at line %i", __FILE__, __LINE__); exit(EXIT_FAILURE); }
 
  /**
   * \enum HxfResult
@@ -29,8 +38,8 @@ void* hxfMalloc(size_t size);
 
 /**
  * @brief Reallocate ptr with its new size.
- * 
- * If it fails, it exits the program. 
+ *
+ * If it fails, it exits the program.
  */
 void* hxfRealloc(void* ptr, size_t size);
 

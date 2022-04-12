@@ -50,14 +50,12 @@ typedef struct HxfUniformBufferObject {
  * the buffer that holds them...
  */
 typedef struct HxfDrawingData {
-    /**
-     * @brief Buffer on the host memory.
-     */
-    VkBuffer hostBuffer;
-    /**
-     * @brief Buffer on the local device memory for vertex relative data.
-     */
-    VkBuffer deviceBuffer;
+    VkBuffer hostBuffer; ///< Buffer on the host memory.
+    VkBuffer deviceBuffer; ///< Buffer on the local device memory for vertex relative data.
+    VkBuffer facesSrcTransferBuffer;
+    VkBuffer facesDstTransferBuffer;
+    VkBuffer pointedCubeSrcBuffer;
+    VkBuffer pointedCubeDstBuffer;
 
     /**
      * @brief The texture images.
@@ -67,10 +65,6 @@ typedef struct HxfDrawingData {
     VkImage textureImage;
     VkImageView textureImageView;
     VkSampler textureSampler;
-
-    VkBuffer facesSrcTransferBuffer;
-    VkBuffer facesDstTransferBuffer;
-    size_t facesSrcTransferBufferOffset;
 
     /**
      * @brief The vertex position used to draw a cube.
@@ -116,67 +110,25 @@ typedef struct HxfDrawingData {
      */
     size_t faceLeftCount;
 
-    /**
-     * @brief Offset of the vertex positions in the buffer.
-     */
-    size_t cubesVerticesBufferOffset;
-    /**
-     * @brief Size of the vertex positions inside the buffer.
-     */
-    size_t cubesVerticesBufferSize;
-    /**
-     * @brief Offset of the index data in the buffer.
-     */
-    size_t cubesVertexIndicesBufferOffset;
-    /**
-     * @brief Size of the vertex data inside the buffer.
-     */
-    size_t cubesVertexIndicesBufferSize;
-    /**
-     * @brief Offset of the ubo in the buffer.
-     */
-    size_t uboBufferOffset;
-    /**
-     * @brief Size of the ubo inside the buffer
-     */
-    size_t uboBufferSize;
-    /**
-     * @brief Offset of the cubes inside the buffer.
-     */
-    size_t facesBufferOffset;
-    /**
-     * @brief Size of the cubes inside the buffer.
-     */
-    size_t facesBufferSize;
-    /**
-     * @brief Offset of the cube inside the host memory.
-     */
-    size_t pointedCubeHostOffset;
-    /**
-     * @brief Offset of the cube inside the device memory.
-     */
-    size_t pointedCubeDeviceOffset;
-    /**
-     * @brief Size of the pointed cube data.
-     */
-    size_t pointedCubeSize;
-    /**
-     * @brief Offset of the texture images in the memory.
-     */
-    size_t textureImageMemoryOffset;
-    /**
-     * @brief Size of the texture images in the memory.
-     */
-    size_t textureImageMemorySize;
+    // Memory offsets
 
-    /**
-     * @brief Offset of the hostBuffer inside the memory.
-     */
-    size_t hostBufferMemoryOffset;
-    /**
-     * @brief Offset of the vertxDeviceBuffer inside the memory.
-     */
-    size_t deviceBufferMemoryOffset;
+    size_t cubesVerticesOffset;
+    size_t cubesVerticesSize;
+    size_t cubesVertexIndicesOffset;
+    size_t cubesVertexIndicesSize;
+    size_t uboOffset;
+    size_t uboSize;
+    size_t facesOffset;
+    size_t facesSize;
+    size_t pointedCubeHostOffset;
+    size_t pointedCubeDeviceOffset;
+    size_t pointedCubeSize;
+    size_t textureImageOffset;
+    size_t textureImageSize;
+
+    size_t hostBufferOffset;
+    size_t deviceBufferOffset;
+    size_t facesSrcTransferBufferOffset;
 } HxfDrawingData;
 
 typedef struct HxfEngine {
@@ -208,8 +160,8 @@ typedef struct HxfEngine {
     VkImage depthImage;
     VkImageView depthImageView;
     VkFormat depthImageFormat;
-    size_t depthImageMemoryOffset; ///< Offset of the depth image inside the memory
-    size_t depthImageMemorySize; ///< Size of the depth image inside the memory
+    size_t depthImageOffset; ///< Offset of the depth image inside the memory
+    size_t depthImageSize; ///< Size of the depth image inside the memory
 
     VkPipeline graphicsPipeline;
     VkPipelineLayout graphicsPipelineLayout;
