@@ -19,6 +19,15 @@ typedef struct HxfVec2 {
 } HxfVec2;
 
 /**
+ * @struct HxfIvec2
+ * @brief A 2 dimensional vector of int values.
+ */
+typedef struct HxfIvec2 {
+    int x;
+    int y;
+} HxfIvec2;
+
+/**
  * @struct HxfVec3
  * @brief A 3 dimensional vector of float values.
  */
@@ -138,12 +147,12 @@ HxfVec3 hxfVec3Sub(const HxfVec3* restrict a, const HxfVec3* restrict b);
 
 /**
  * @brief Round the vector’s value to the smallest value.
- * 
+ *
  * e.g: 2.1 become 2, 6.8 become 6, -3.3 become -4 and -8.9 become -9.
- * 
+ *
  * @param vec The vector to round.
- * 
- * @return The rounded vector. 
+ *
+ * @return The rounded vector.
  */
 HxfIvec3 roundVector(HxfVec3* restrict vec);
 
@@ -168,23 +177,23 @@ HxfMat4 hxfMat4RotationMatrix(float angle, const HxfVec3* restrict axis);
 
 /**
  * @brief Return a perspective projection matrix.
- * 
+ *
  * @param near The near plane.
  * @param far The far plane.
  * @param fov The vertical field of view of the projection.
  * @param aspect The aspect ratio of the projection.
- * 
+ *
  * @return The perspective projection.
  */
 HxfMat4 hxfPerspectiveProjectionMatrix(float near, float far, float fov, float aspect);
 
 /**
  * @brief Return a view matrix.
- * 
+ *
  * @param position The position of the view.
  * @param forwardDirection The direction vector that point where the view is looking.
  * @param upDirection The up vector, pointing to the top.
- * 
+ *
  * @return The view matrix.
  */
 HxfMat4 hxfViewMatrix(const HxfVec3* restrict position, const HxfVec3* restrict forwardDirection, const HxfVec3* restrict upDirection);

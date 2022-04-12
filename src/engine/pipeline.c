@@ -125,33 +125,47 @@ static void createRenderPass(HxfEngine* restrict engine) {
 
 static void createDescriptors(HxfEngine* restrict engine) {
     // Create the descriptor set layout
-    VkDescriptorSetLayoutBinding uboLayoutBinding = {
-        .binding = 0,
-        .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-        .descriptorCount = 1,
-        .stageFlags = VK_SHADER_STAGE_VERTEX_BIT
+
+    VkDescriptorSetLayoutBinding layoutBindings[] = {
+        { // ubo
+            .binding = 0,
+            .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+            .descriptorCount = 1,
+            .stageFlags = VK_SHADER_STAGE_VERTEX_BIT
+        },
+        { // texture sampler
+            .binding = 1,
+            .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+            .descriptorCount = 1,
+            .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT
+        }
     };
-    VkDescriptorSetLayoutCreateInfo uboLayoutInfo = {
+    VkDescriptorSetLayoutCreateInfo layoutInfo = {
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-        .bindingCount = 1,
-        .pBindings = &uboLayoutBinding,
+        .bindingCount = 2,
+        .pBindings = layoutBindings,
     };
-    if (vkCreateDescriptorSetLayout(engine->device, &uboLayoutInfo, NULL, &engine->descriptorSetLayout)) {
+    if (vkCreateDescriptorSetLayout(engine->device, &layoutInfo, NULL, &engine->descriptorSetLayout)) {
         HXF_MSG_ERROR("Could not create the ubo descriptor set layout");
         exit(EXIT_FAILURE);
     }
 
     // Create a descriptor pool
+
     VkDescriptorPoolSize descriptorPoolSizes[] = {
-        {
+        { // ubo
             .descriptorCount = HXF_MAX_RENDERED_FRAMES,
             .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+        },
+        { // texture sampler
+            .descriptorCount = HXF_MAX_RENDERED_FRAMES,
+            .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER
         }
     };
     VkDescriptorPoolCreateInfo descriptorPoolInfo = {
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
         .maxSets = HXF_MAX_RENDERED_FRAMES,
-        .poolSizeCount = 1,
+        .poolSizeCount = 2,
         .pPoolSizes = descriptorPoolSizes,
     };
     if (vkCreateDescriptorPool(engine->device, &descriptorPoolInfo, NULL, &engine->descriptorPool)) {
@@ -160,13 +174,13 @@ static void createDescriptors(HxfEngine* restrict engine) {
     }
 
     // Copy HXF_MAX_RENDERED_FRAMES times engine->descriptorSetLayout
+
     VkDescriptorSetLayout setLayouts[HXF_MAX_RENDERED_FRAMES] = { 0 };
     for (int i = 0; i != HXF_MAX_RENDERED_FRAMES; i++) {
         setLayouts[i] = engine->descriptorSetLayout;
     }
 
     // And allocate the descriptor sets from the pool
-    engine->descriptorSets = hxfMalloc(HXF_MAX_RENDERED_FRAMES * sizeof(VkDescriptorSet));
 
     VkDescriptorSetAllocateInfo descriptorSetInfo = {
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
@@ -180,11 +194,17 @@ static void createDescriptors(HxfEngine* restrict engine) {
     }
 
     // Update the descriptor sets
+
     for (int i = 0; i != HXF_MAX_RENDERED_FRAMES; i++) {
-        VkDescriptorBufferInfo uboDescriptorBufferInfo = {
+        VkDescriptorBufferInfo bufferInfo = {
             .buffer = engine->drawingData.hostBuffer,
             .offset = engine->drawingData.uboBufferOffset,
             .range = engine->drawingData.uboBufferSize,
+        };
+        VkDescriptorImageInfo imageInfo = {
+            .sampler = engine->drawingData.textureSampler,
+            .imageView = engine->drawingData.textureImageView,
+            .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
         };
         VkWriteDescriptorSet writeDescriptorSets[] = {
             {
@@ -194,10 +214,19 @@ static void createDescriptors(HxfEngine* restrict engine) {
                 .dstArrayElement = 0,
                 .descriptorCount = 1,
                 .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-                .pBufferInfo = &uboDescriptorBufferInfo,
+                .pBufferInfo = &bufferInfo,
+            },
+            {
+                .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                .dstSet = engine->descriptorSets[i],
+                .dstBinding = 1,
+                .dstArrayElement = 0,
+                .descriptorCount = 1,
+                .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                .pImageInfo = &imageInfo
             }
         };
-        vkUpdateDescriptorSets(engine->device, 1, writeDescriptorSets, 0, NULL);
+        vkUpdateDescriptorSets(engine->device, 2, writeDescriptorSets, 0, NULL);
     }
 }
 
@@ -224,10 +253,9 @@ void createGraphicsPipeline(HxfEngine* restrict engine) {
     };
 
     VkVertexInputBindingDescription cubeBindingDescriptions[] = {
-        // Cubes
         {
             .binding = 0,
-            .stride = sizeof(HxfVec3),
+            .stride = sizeof(HxfVertexData), // vertex pos + texel pos
             .inputRate = VK_VERTEX_INPUT_RATE_VERTEX,
         },
         {
@@ -241,27 +269,33 @@ void createGraphicsPipeline(HxfEngine* restrict engine) {
             .binding = 0,
             .location = 0,
             .format = VK_FORMAT_R32G32B32_SFLOAT,
-            .offset = 0,
+            .offset = offsetof(HxfVertexData, position),
+        },
+        { // Texel coordinate
+            .binding = 0,
+            .location = 2,
+            .format = VK_FORMAT_R32G32_SFLOAT,
+            .offset = offsetof(HxfVertexData, texelCoordinate),
         },
         { // Cube position
             .binding = 1,
-            .location = 2,
+            .location = 1,
             .format = VK_FORMAT_R32G32B32_SFLOAT,
             .offset = offsetof(HxfCubeData, cubePosition)
         },
-        { // Cube color
+        { // Texture index
             .binding = 1,
             .location = 3,
-            .format = VK_FORMAT_R32G32B32_SFLOAT,
-            .offset = offsetof(HxfCubeData, cubeColor)
-        },
+            .format = VK_FORMAT_R32_UINT,
+            .offset = offsetof(HxfCubeData, textureIndex)
+        }
     };
 
     VkPipelineVertexInputStateCreateInfo vertexInputInfo = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
         .vertexBindingDescriptionCount = 2,
         .pVertexBindingDescriptions = cubeBindingDescriptions,
-        .vertexAttributeDescriptionCount = 3,
+        .vertexAttributeDescriptionCount = 4,
         .pVertexAttributeDescriptions = cubeAttributeDescriptions,
     };
 
@@ -272,10 +306,10 @@ void createGraphicsPipeline(HxfEngine* restrict engine) {
     };
 
     VkViewport viewport = {
-        .x = 0.f,
-        .y = 0.f,
-        .minDepth = 0.f,
-        .maxDepth = 1.f,
+        .x = 0.0f,
+        .y = 0.0f,
+        .minDepth = 0.0f,
+        .maxDepth = 1.0f,
         .width = engine->swapchainExtent.width,
         .height = engine->swapchainExtent.height,
     };
@@ -300,7 +334,7 @@ void createGraphicsPipeline(HxfEngine* restrict engine) {
         .rasterizerDiscardEnable = VK_FALSE,
         .polygonMode = VK_POLYGON_MODE_FILL,
         .cullMode = VK_CULL_MODE_BACK_BIT,
-        .frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE,
+        .frontFace = VK_FRONT_FACE_CLOCKWISE,
         .lineWidth = 1.f,
     };
 

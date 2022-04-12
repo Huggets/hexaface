@@ -8,6 +8,7 @@ add_compile_options(-Wall)
 
 add_executable(
     hexaface
+    src/deps-compile.c
     src/main.c
     src/hxf.c
     src/app.c

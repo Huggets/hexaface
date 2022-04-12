@@ -5,7 +5,16 @@
 
 #define CUBE_COUNT HXF_WORLD_LENGTH * HXF_WORLD_LENGTH * HXF_WORLD_LENGTH
 
-static void createFile(const char* restrict filename) {
+/**
+ * @brief Create a world file.
+ * 
+ * It create a world file that already contains cubes.
+ * 
+ * @param filename The name of the file.
+ */
+static void createWorldFile(const char* restrict filename) {
+    // Create the file
+
     FILE* file = fopen(filename, "w");
 
     if (!file) {
@@ -13,27 +22,35 @@ static void createFile(const char* restrict filename) {
         exit(EXIT_FAILURE);
     }
 
+    // Add default cubes to the world
+
     uint32_t filecontent[CUBE_COUNT] = { 0 };
     for (int x = 0; x != HXF_WORLD_LENGTH; x++) {
         for (int z = 0; z != HXF_WORLD_LENGTH; z++) {
+            // A layer of dirt
             for (int y = 0; y != 4; y++) {
-                filecontent[x * HXF_WORLD_LENGTH * HXF_WORLD_LENGTH + y * HXF_WORLD_LENGTH + z] = 1;
+                filecontent[x * HXF_WORLD_LENGTH * HXF_WORLD_LENGTH + y * HXF_WORLD_LENGTH + z] = 2;
             }
-            filecontent[x * HXF_WORLD_LENGTH * HXF_WORLD_LENGTH + 4 * HXF_WORLD_LENGTH + z] = 2;
+            // A layer of grass on top of it
+            filecontent[x * HXF_WORLD_LENGTH * HXF_WORLD_LENGTH + 4 * HXF_WORLD_LENGTH + z] = 1;
         }
     }
+
+    // Write to file then close the file
+
     fwrite(filecontent, sizeof(uint32_t), CUBE_COUNT, file);
 
     fclose(file);
 }
 
 void hxfWorldLoad(const char* restrict filename, HxfWorld* restrict world) {
+    // Open the world file.
+    // If the file does not exist, it create a new world file.
+    
     FILE* file = fopen(filename, "rb");
 
-    // TODO This may overwrite an existing that failed to open
-
     if (!file) {
-        createFile(filename);
+        createWorldFile(filename);
 
         file = fopen(filename, "rb");
         if (!file) {
@@ -42,10 +59,14 @@ void hxfWorldLoad(const char* restrict filename, HxfWorld* restrict world) {
         }
     }
 
+    // Get the content of the file
+
     uint32_t filecontent[CUBE_COUNT];
     fread(filecontent, sizeof(uint32_t), CUBE_COUNT, file);
 
     fclose(file);
+
+    // Convert the file content to world data
 
     for (int x = 0; x != HXF_WORLD_LENGTH; x++) {
         for (int y = 0; y != HXF_WORLD_LENGTH; y++) {
@@ -63,6 +84,8 @@ void hxfWorldSave(const char* restrict filename, const HxfWorld* restrict world)
         HXF_MSG_ERROR("Could not open file to save the world");
         exit(EXIT_FAILURE);
     }
+
+    // Write the world to the file.
 
     uint32_t filecontent[CUBE_COUNT];
     for (int x = 0; x != HXF_WORLD_LENGTH; x++) {

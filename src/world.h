@@ -19,7 +19,7 @@ typedef struct HxfWorld {
 /**
  * @brief Load a world from a file.
  * 
- * If the file does not exist, it creates a new file.
+ * If the file does not exist, it creates a new default world file.
  *
  * @param filename The file’s name that will be loaded.
  * @param world A pointer to the world that will be created from the file.

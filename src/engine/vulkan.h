@@ -14,15 +14,27 @@
  */
 #define HXF_MAX_RENDERED_FRAMES 2
 
-#define HXF_VERTEX_COUNT 8
+#define HXF_VERTEX_COUNT 24
 #define HXF_INDEX_COUNT 36
 #define HXF_CUBE_COUNT (HXF_WORLD_LENGTH * HXF_WORLD_LENGTH * HXF_WORLD_LENGTH)
 
 #define HXF_TEXTURE_COUNT 3
 
+#define HXF_FACES_TOP 0
+#define HXF_FACES_BACK 1
+#define HXF_FACES_BOTTOM 2
+#define HXF_FACES_FRONT 3
+#define HXF_FACES_RIGHT 4
+#define HXF_FACES_LEFT 5
+
+typedef struct HxfVertexData {
+    alignas(16) HxfVec3 position;
+    alignas(8)  HxfVec2 texelCoordinate;
+} HxfVertexData;
+
 typedef struct HxfCubeData {
     HxfVec3 cubePosition;
-    HxfVec3 cubeColor;
+    uint32_t textureIndex;
 } HxfCubeData;
 
 typedef struct HxfUniformBufferObject {
@@ -47,6 +59,15 @@ typedef struct HxfDrawingData {
      */
     VkBuffer deviceBuffer;
 
+    /**
+     * @brief The texture images.
+     *
+     * For example the grass texture.
+     */
+    VkImage textureImage;
+    VkImageView textureImageView;
+    VkSampler textureSampler;
+
     VkBuffer facesSrcTransferBuffer;
     VkBuffer facesDstTransferBuffer;
     size_t facesSrcTransferBufferOffset;
@@ -54,7 +75,7 @@ typedef struct HxfDrawingData {
     /**
      * @brief The vertex position used to draw a cube.
      */
-    HxfVec3 cubesVertices[HXF_VERTEX_COUNT];
+    HxfVertexData cubesVertices[HXF_VERTEX_COUNT];
     /**
      * @brief The index of the vertices that is used to draw a cube.
      */
@@ -139,6 +160,14 @@ typedef struct HxfDrawingData {
      * @brief Size of the pointed cube data.
      */
     size_t pointedCubeSize;
+    /**
+     * @brief Offset of the texture images in the memory.
+     */
+    size_t textureImageMemoryOffset;
+    /**
+     * @brief Size of the texture images in the memory.
+     */
+    size_t textureImageMemorySize;
 
     /**
      * @brief Offset of the hostBuffer inside the memory.
@@ -148,13 +177,6 @@ typedef struct HxfDrawingData {
      * @brief Offset of the vertxDeviceBuffer inside the memory.
      */
     size_t deviceBufferMemoryOffset;
-
-    /**
-     * @brief Contains the textures color of all the cubes.
-     *
-     * The index is the id of the texture.
-     */
-    HxfVec3 textures[HXF_TEXTURE_COUNT];
 } HxfDrawingData;
 
 typedef struct HxfEngine {
@@ -193,14 +215,29 @@ typedef struct HxfEngine {
     VkRenderPass renderPass;
     VkDescriptorPool descriptorPool;
     VkDescriptorSetLayout descriptorSetLayout;
-    VkDescriptorSet* descriptorSets; ///< size = HXF_MAX_RENDERED_FRAMES
+    VkDescriptorSet descriptorSets[HXF_MAX_RENDERED_FRAMES];
 
     VkCommandPool commandPool;
-    VkCommandBuffer* drawCommandBuffers; ///< size = HXF_MAX_RENDERED_FRAMES
+    /**
+     * @brief All the command buffers allocated from the commandPool.
+     * 
+     * List of the command buffers:
+     * - HXF_MAX_RENDERED_FRAMES draw command buffers
+     * - 1 transfer command buffer
+     */
+    VkCommandBuffer commandBuffers[HXF_MAX_RENDERED_FRAMES + 1];
+    /**
+     * @brief A pointer to the first draw command buffer.
+     */
+    VkCommandBuffer* drawCommandBuffers;
+    /**
+     * @brief A pointer to the transferCommandBuffer.
+     */
+    VkCommandBuffer* transferCommandBuffer;
 
-    VkSemaphore* nextImageAvailableSemaphores; ///< size = HXF_MAX_RENDERED_FRAMES
-    VkSemaphore* nextImageSubmitedSemaphores; ///< size = HXF_MAX_RENDERED_FRAMES
-    VkFence* imageRenderedFences; ///< size = HXF_MAX_RENDERED_FRAMES
+    VkSemaphore nextImageAvailableSemaphores[HXF_MAX_RENDERED_FRAMES];
+    VkSemaphore nextImageSubmitedSemaphores[HXF_MAX_RENDERED_FRAMES];
+    VkFence imageRenderedFences[HXF_MAX_RENDERED_FRAMES];
 
     /**
      * @brief Fence that can be used for anything.
