@@ -11,5 +11,5 @@ layout(location = 0) out vec4 outColor;
 
 void main() {
     // Get the texture color
-    outColor = vec4(texture(texelSampler, inTexelCoordinates).rgb, 1.0);
+    outColor = vec4(texture(texelSampler, inTexelCoordinates).rgb + vec3(0.1, 0.1, 0.1), 1.0);
 }

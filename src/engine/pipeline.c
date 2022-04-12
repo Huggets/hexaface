@@ -234,8 +234,20 @@ void createGraphicsPipeline(HxfEngine* restrict engine) {
     createRenderPass(engine);
     createDescriptors(engine);
 
-    VkShaderModule vertexModule = createShaderModule(engine, "vertex.spv");
-    VkShaderModule fragmentModule = createShaderModule(engine, "fragment.spv");
+    char vertexFileName[] = "/shaders/vertex.spv";
+    char fragmentFileName[] = "/shaders/fragment.spv";
+    char* vertexPath = hxfMalloc(sizeof(char) * (strlen(engine->appdataDirectory) + sizeof(vertexFileName)));
+    char* fragmentPath = hxfMalloc(sizeof(char) * (strlen(engine->appdataDirectory) + sizeof(fragmentFileName)));
+    strcpy(vertexPath, engine->appdataDirectory);
+    strcpy(fragmentPath, engine->appdataDirectory);
+    strcat(vertexPath, vertexFileName);
+    strcat(fragmentPath, fragmentFileName);
+
+    VkShaderModule vertexModule = createShaderModule(engine, vertexPath);
+    VkShaderModule fragmentModule = createShaderModule(engine, fragmentPath);
+
+    hxfFree(vertexPath);
+    hxfFree(fragmentPath);
 
     VkPipelineShaderStageCreateInfo stages[] = {
         {

@@ -73,12 +73,28 @@ static void updateDrawnFaces(HxfGameData* restrict game) {
 void hxfInitGame(HxfGameData* restrict game) {
     game->cubeSelector = 1;
 
-    hxfWorldLoad("world", &game->world);
+    char worldFileName[] = "/world";
+    char* worldFilePath = hxfMalloc(sizeof(char) * (strlen(game->appdataDirectory) + sizeof(worldFileName)));
+    strcpy(worldFilePath, game->appdataDirectory);
+    strcat(worldFilePath, worldFileName);
+
+    hxfWorldLoad(worldFilePath, &game->world);
+
+    hxfFree(worldFilePath);
+
     updateDrawnFaces(game); // We need to define which cubes’ faces will be drawn
+
 }
 
 void hxfStopGame(HxfGameData* restrict game) {
-    hxfWorldSave("world", &game->world);
+    char worldFileName[] = "/world";
+    char* worldFilePath = hxfMalloc(sizeof(char) * (strlen(game->appdataDirectory) + sizeof(worldFileName)));
+    strcpy(worldFilePath, game->appdataDirectory);
+    strcat(worldFilePath, worldFileName);
+
+    hxfWorldSave(worldFilePath, &game->world);
+
+    hxfFree(worldFilePath);
 }
 
 void hxfGameFrame(HxfGameData* restrict game) {

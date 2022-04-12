@@ -5,6 +5,7 @@
 #include "vulkan.h"
 
 typedef struct HxfGameData {
+    const char* const appdataDirectory;
     /**
      * @brief The graphics engine
      */

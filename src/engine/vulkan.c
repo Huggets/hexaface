@@ -1192,7 +1192,13 @@ static void createBuffers(HxfEngine* restrict engine, const VkDeviceSize* restri
 static void createTextureImages(HxfEngine* restrict engine, TextureImageInfo* restrict textureInfo) {
     // Load the textures
 
-    textureInfo->pixels = stbi_load("../textures/textures.png", &textureInfo->width, &textureInfo->height, &textureInfo->channels, STBI_rgb_alpha);
+    char* texturePath = hxfMalloc(sizeof(char) * (strlen(engine->appdataDirectory) + 31));
+    strcpy(texturePath, engine->appdataDirectory);
+    strcat(texturePath, "/textures/textures.png");
+
+    textureInfo->pixels = stbi_load(texturePath, &textureInfo->width, &textureInfo->height, &textureInfo->channels, STBI_rgb_alpha);
+
+    hxfFree(texturePath);
 
     if (!textureInfo->pixels) {
         HXF_MSG_ERROR("Could not load texture files");

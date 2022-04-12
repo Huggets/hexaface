@@ -52,6 +52,11 @@ typedef struct HxfAppData {
      * @brief The duration (in seconds) of the last frame.
      */
     float frameDuration;
+
+    /**
+     * @brief The path to the appdataDirectory.
+     */
+    char* appdataDirectory;
 } HxfAppData;
 
 /**
@@ -70,8 +75,19 @@ typedef struct HxfAppParam {
      */
     int nCmdShow;
 
+    /**
+     * @brief The width of the window.
+     */
     int windowWidth;
+    /**
+     * @brief The height of the window.
+     */
     int windowHeight;
+
+    /**
+     * @brief The path to the appdata directory.
+     */
+    char* appDataDirectory;
 #endif
 } HxfAppParam;
 

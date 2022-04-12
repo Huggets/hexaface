@@ -12,7 +12,7 @@
 /**
  * @brief The height of textures.png
  */
-#define TEXTURE_HEIGHT 48.0F
+#define TEXTURE_HEIGHT 80.0F
 
 static void mainLoop(HxfAppData* restrict app) {
     const clock_t startClock = clock();
@@ -94,6 +94,9 @@ void hxfStartApp(const HxfAppParam* restrict param) {
             .pitch = 0.0f,
         },
         .run = 1,
+        .appdataDirectory = param->appDataDirectory,
+        .game.appdataDirectory = param->appDataDirectory,
+        .engine.appdataDirectory = param->appDataDirectory
     };
 
     // Create the main window

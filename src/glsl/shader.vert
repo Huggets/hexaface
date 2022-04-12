@@ -3,7 +3,7 @@
 // Width of textures.png
 #define TEXTURE_WIDTH 96.0
 // Height of texture.png
-#define TEXTURE_HEIGHT 48.0
+#define TEXTURE_HEIGHT 80.0
 
 // Position of the vertex
 layout(location = 0) in vec3 inPosition;

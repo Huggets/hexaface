@@ -18,7 +18,7 @@
 #define HXF_INDEX_COUNT 36
 #define HXF_CUBE_COUNT (HXF_WORLD_LENGTH * HXF_WORLD_LENGTH * HXF_WORLD_LENGTH)
 
-#define HXF_TEXTURE_COUNT 3
+#define HXF_TEXTURE_COUNT 5
 
 #define HXF_FACES_TOP 0
 #define HXF_FACES_BACK 1
@@ -183,6 +183,7 @@ typedef struct HxfEngine {
     HxfWindow* mainWindow;
     VkSurfaceKHR mainWindowSurface;
 
+    const char* const appdataDirectory;
     const HxfKeyboardState* keyboardState;
     const HxfCamera* camera;
     const HxfWorld* world;

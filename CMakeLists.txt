@@ -28,12 +28,12 @@ add_custom_target(shaders)
 add_custom_command(
     TARGET shaders PRE_BUILD
     COMMAND glslc
-    ARGS -o vertex.spv ${CMAKE_SOURCE_DIR}/src/glsl/shader.vert
+    ARGS -o ${CMAKE_HOME_DIRECTORY}/appdata/shaders/vertex.spv ${CMAKE_SOURCE_DIR}/src/glsl/shader.vert
 )
 add_custom_command(
     TARGET shaders PRE_BUILD
     COMMAND glslc
-    ARGS -o fragment.spv ${CMAKE_SOURCE_DIR}/src/glsl/shader.frag
+    ARGS -o ${CMAKE_HOME_DIRECTORY}/appdata/shaders/fragment.spv ${CMAKE_SOURCE_DIR}/src/glsl/shader.frag
 )
 
 ### Variable handling ###
@@ -56,7 +56,6 @@ endif()
 
 if(WIN32) # Compile for windows
     target_compile_definitions(hexaface PRIVATE HXF_WIN32)
-    target_link_options(hexaface PRIVATE -municode)
     target_link_directories(hexaface PRIVATE lib)
-    target_link_libraries(hexaface vulkan-1 shlwapi)
+    target_link_libraries(hexaface vulkan-1)
 endif()

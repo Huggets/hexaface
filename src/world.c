@@ -27,12 +27,14 @@ static void createWorldFile(const char* restrict filename) {
     uint32_t filecontent[CUBE_COUNT] = { 0 };
     for (int x = 0; x != HXF_WORLD_LENGTH; x++) {
         for (int z = 0; z != HXF_WORLD_LENGTH; z++) {
-            // A layer of dirt
-            for (int y = 0; y != 4; y++) {
-                filecontent[x * HXF_WORLD_LENGTH * HXF_WORLD_LENGTH + y * HXF_WORLD_LENGTH + z] = 2;
+            // A layer of stone
+            for (int y = 0; y != 2; y++) {
+                filecontent[x * HXF_WORLD_LENGTH * HXF_WORLD_LENGTH + y * HXF_WORLD_LENGTH + z] = 3;
             }
-            // A layer of grass on top of it
-            filecontent[x * HXF_WORLD_LENGTH * HXF_WORLD_LENGTH + 4 * HXF_WORLD_LENGTH + z] = 1;
+            // A layer of dirt
+            filecontent[x * HXF_WORLD_LENGTH * HXF_WORLD_LENGTH + 2 * HXF_WORLD_LENGTH + z] = 2;
+            // And a layer of grass
+            filecontent[x * HXF_WORLD_LENGTH * HXF_WORLD_LENGTH + 3 * HXF_WORLD_LENGTH + z] = 1;
         }
     }
 
