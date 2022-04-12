@@ -64,8 +64,6 @@ void handleParamaters(HxfAppParam* restrict appParam, int argc, char** argv) {
 }
 
 int main(int argc, char** argv) {
-    ShowWindow(GetConsoleWindow(), SW_HIDE);
-
     HxfAppParam param = {
         GetModuleHandle(NULL), SW_NORMAL, 800, 600, "appdata"
     };
