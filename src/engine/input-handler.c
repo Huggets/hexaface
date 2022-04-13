@@ -4,6 +4,7 @@
 #include "../window.h"
 
 #include <math.h>
+#include <time.h>
 
 static void emptyCallback(void* param) { }
 
@@ -80,9 +81,9 @@ static void aKeyDown(void* param) {
     HxfAppData* app = (HxfAppData*)param;
     app->keyboardState.a = 1;
 
-    if (app->game.camera.isPointingToCube) {
-        hxfReplaceCube(&app->game, &app->game.camera.nearPointedCube, app->game.cubeSelector);
-    }
+    // if (app->game.camera.isPointingToCube) {
+    //     hxfReplaceCube(&app->game, &app->game.camera.nearPointedCube, app->game.cubeSelector);
+    // }
 }
 static void aKeyUp(void* param) {
     HxfAppData* app = (HxfAppData*)param;
@@ -116,9 +117,9 @@ static void eKeyDown(void* param) {
     HxfAppData* app = (HxfAppData*)param;
     app->keyboardState.e = 1;
 
-    if (app->game.camera.isPointingToCube) {
-        hxfReplaceCube(&app->game, &app->game.camera.pointedCube, 0);
-    }
+    // if (app->game.camera.isPointingToCube) {
+    //     hxfReplaceCube(&app->game, &app->game.camera.pointedCube, 0);
+    // }
 }
 static void eKeyUp(void* param) {
     HxfAppData* app = (HxfAppData*)param;
@@ -279,6 +280,7 @@ void hxfInitInput(HxfAppData* app) {
 
 void hxfHandleInput(HxfAppData* restrict app) {
     const float moveSpeed = 3.0f;
+    const float repeatTime = 0.2f;
 
     /* MISC KEYS */
 
@@ -346,6 +348,46 @@ void hxfHandleInput(HxfAppData* restrict app) {
         tmp.z *= app->frameDuration * moveSpeed;
 
         app->game.camera.position = hxfVec3Add(&app->game.camera.position, &tmp);
+    }
+
+    static int wasPressedA = 0;
+    if (app->keyboardState.a) {
+        static float lastTimeTriggered = 0.0f;
+        float tmp = (float)clock() / (float)CLOCKS_PER_SEC;
+
+        // Place a cube if the key wasn’t press the last frame or with auto-repeat
+        if (!wasPressedA) {
+            wasPressedA = 1;
+            hxfReplaceCube(&app->game, &app->game.camera.nearPointedCube, app->game.cubeSelector);
+            lastTimeTriggered = tmp;
+        }
+        else if (tmp > lastTimeTriggered + repeatTime) {
+            lastTimeTriggered = tmp;
+            hxfReplaceCube(&app->game, &app->game.camera.nearPointedCube, app->game.cubeSelector);
+        }
+    }
+    else {
+        wasPressedA = 0;
+    }
+
+    static int wasPressedE = 0;
+    if (app->keyboardState.e) {
+        static float lastTimeTriggered = 0.0f;
+        float tmp = (float)clock() / (float)CLOCKS_PER_SEC;
+
+        // Destroy a cube if the key wasn’t press the last frame or with auto-repeat
+        if (!wasPressedE) {
+            wasPressedE = 1;
+            hxfReplaceCube(&app->game, &app->game.camera.pointedCube, 0);
+            lastTimeTriggered = tmp;
+        }
+        else if (tmp > lastTimeTriggered + repeatTime) {
+            lastTimeTriggered = tmp;
+            hxfReplaceCube(&app->game, &app->game.camera.pointedCube, 0);
+        }
+    }
+    else {
+        wasPressedE = 0;
     }
 
     /* COMPUTING */

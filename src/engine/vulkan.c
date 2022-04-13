@@ -976,7 +976,7 @@ static void allocateMemory(HxfEngine* restrict engine, const TextureImageInfo* r
     VkMemoryAllocateInfo allocInfo = {
         .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO
     };
-    
+
     allocInfo.allocationSize = hostMemorySize;
     allocInfo.memoryTypeIndex = getMemoryTypeIndex(&engine->physicalDeviceMemoryProperties, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
     HXF_TRY_VK(vkAllocateMemory(engine->device, &allocInfo, NULL, &engine->hostMemory));
@@ -1262,7 +1262,7 @@ static void updatePointedCubeBuffer(HxfEngine* restrict engine) {
     }
 
     const HxfCubeData pointedCube = {
-        { (float)engine->camera->pointedCube.x, (float)engine->camera->pointedCube.y, (float)engine->camera->pointedCube.z },
+        { (float)engine->camera->nearPointedCube.x, (float)engine->camera->nearPointedCube.y, (float)engine->camera->nearPointedCube.z },
         0
     };
 

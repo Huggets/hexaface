@@ -1,5 +1,7 @@
 #pragma once
 
+#include <time.h>
+
 /**
  * @brief Represent the scan code of a key.
  * 
