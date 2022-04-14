@@ -699,7 +699,7 @@ static void createFramebuffers(HxfGraphicsHandler* restrict graphics) {
     for (int i = graphics->swapchainImageCount - 1; i != -1; i--) {
         VkImageView attachments[] = {
             graphics->swapchainImageView[i],
-            graphics->depthImageView
+            graphics->drawingData.depthImageView
         };
         framebufferInfo.pAttachments = attachments;
 
@@ -871,8 +871,8 @@ static void allocateMemory(HxfGraphicsHandler* restrict graphics, const TextureI
      *****************/
 
     // Depth image
-    vkGetImageMemoryRequirements(graphics->device, graphics->depthImage, &memoryRequirements);
-    alignObject(&memoryRequirements, &memoryOffset, &graphics->depthImageOffset, &graphics->depthImageSize, 1);
+    vkGetImageMemoryRequirements(graphics->device, graphics->drawingData.depthImage, &memoryRequirements);
+    alignObject(&memoryRequirements, &memoryOffset, &graphics->drawingData.depthImageOffset, &graphics->drawingData.depthImageSize, 1);
 
     // Texture image
     vkGetImageMemoryRequirements(graphics->device, drawingData->textureImage, &memoryRequirements);
@@ -1031,7 +1031,7 @@ static void allocateMemory(HxfGraphicsHandler* restrict graphics, const TextureI
     vkBindBufferMemory(graphics->device, drawingData->pointedCubeSrcBuffer, graphics->hostMemory, graphics->drawingData.pointedCubeHostOffset);
     vkBindBufferMemory(graphics->device, drawingData->pointedCubeDstBuffer, graphics->deviceMemory, graphics->drawingData.pointedCubeDeviceOffset);
     vkBindBufferMemory(graphics->device, drawingData->iconBuffer, graphics->deviceMemory, drawingData->iconBufferOffset);
-    vkBindImageMemory(graphics->device, graphics->depthImage, graphics->deviceMemory, graphics->depthImageOffset);
+    vkBindImageMemory(graphics->device, graphics->drawingData.depthImage, graphics->deviceMemory, graphics->drawingData.depthImageOffset);
     vkBindImageMemory(graphics->device, drawingData->textureImage, graphics->deviceMemory, drawingData->textureImageOffset);
 
     // Transfer the device buffer data, from the host to the device memory
@@ -1165,7 +1165,7 @@ static void createDepthImage(HxfGraphicsHandler* restrict graphics) {
         VkFormatProperties properties;
         vkGetPhysicalDeviceFormatProperties(graphics->physicalDevice, formats[i], &properties);
         if ((properties.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT) == VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT) {
-            graphics->depthImageFormat = formats[i];
+            graphics->drawingData.depthImageFormat = formats[i];
             notFound = 0;
         }
 
@@ -1179,7 +1179,7 @@ static void createDepthImage(HxfGraphicsHandler* restrict graphics) {
     VkImageCreateInfo imageInfo = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
         .imageType = VK_IMAGE_TYPE_2D,
-        .format = graphics->depthImageFormat,
+        .format = graphics->drawingData.depthImageFormat,
         .extent = { graphics->mainWindow->width, graphics->mainWindow->height, 1 },
         .mipLevels = 1,
         .arrayLayers = 1,
@@ -1192,7 +1192,7 @@ static void createDepthImage(HxfGraphicsHandler* restrict graphics) {
         .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
     };
 
-    HXF_TRY_VK(vkCreateImage(graphics->device, &imageInfo, NULL, &graphics->depthImage));
+    HXF_TRY_VK(vkCreateImage(graphics->device, &imageInfo, NULL, &graphics->drawingData.depthImage));
 }
 
 static void createImageViews(HxfGraphicsHandler* restrict graphics) {
@@ -1200,9 +1200,9 @@ static void createImageViews(HxfGraphicsHandler* restrict graphics) {
 
     VkImageViewCreateInfo imageViewInfo = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-        .image = graphics->depthImage,
+        .image = graphics->drawingData.depthImage,
         .viewType = VK_IMAGE_VIEW_TYPE_2D,
-        .format = graphics->depthImageFormat,
+        .format = graphics->drawingData.depthImageFormat,
         .components = { 0 },
         .subresourceRange = {
             .aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT,
@@ -1212,7 +1212,7 @@ static void createImageViews(HxfGraphicsHandler* restrict graphics) {
             .layerCount = 1
         }
     };
-    HXF_TRY_VK(vkCreateImageView(graphics->device, &imageViewInfo, NULL, &graphics->depthImageView));
+    HXF_TRY_VK(vkCreateImageView(graphics->device, &imageViewInfo, NULL, &graphics->drawingData.depthImageView));
 
     // texture images view
 
@@ -1338,8 +1338,8 @@ void hxfGraphicsDestroy(HxfGraphicsHandler* restrict graphics) {
 
     vkDestroySampler(graphics->device, graphics->drawingData.textureSampler, NULL);
     vkDestroyImage(graphics->device, graphics->drawingData.textureImage, NULL);
-    vkDestroyImageView(graphics->device, graphics->depthImageView, NULL);
-    vkDestroyImage(graphics->device, graphics->depthImage, NULL);
+    vkDestroyImageView(graphics->device, graphics->drawingData.depthImageView, NULL);
+    vkDestroyImage(graphics->device, graphics->drawingData.depthImage, NULL);
     vkDestroyImageView(graphics->device, graphics->drawingData.textureImageView, NULL);
 
     vkDestroyBuffer(graphics->device, graphics->drawingData.pointedCubeSrcBuffer, NULL);

@@ -81,6 +81,10 @@ typedef struct HxfDrawingData {
     VkImageView textureImageView;
     VkSampler textureSampler;
 
+    VkImage depthImage; ///< The depth image
+    VkImageView depthImageView; /// The image view of the depth image
+    VkFormat depthImageFormat; ///< The format of the depth image
+
     HxfCubeVertexData cubesVertices[HXF_CUBE_VERTEX_DATA_COUNT];
     HxfCubeInstanceData cubeInstances[6][HXF_CUBE_INSTANCE_COUNT]; ///< Data for each cubes faces
     uint32_t cubesVertexIndices[HXF_CUBE_VERTEX_INDEX_COUNT];
@@ -101,23 +105,25 @@ typedef struct HxfDrawingData {
 
     // Memory offsets and sizes
 
-    size_t cubesVerticesOffset;
-    size_t cubesVerticesSize;
-    size_t cubesVertexIndicesOffset;
-    size_t cubesVertexIndicesSize;
-    size_t mvpOffset;
-    size_t mvpSize;
-    size_t cubeInstancesOffset;
-    size_t cubeInstancesSize;
-    size_t pointedCubeHostOffset;
-    size_t pointedCubeDeviceOffset;
-    size_t pointedCubeSize;
-    size_t textureImageOffset;
-    size_t textureImageSize;
-    size_t iconVerticesOffset;
-    size_t iconVerticesSize;
-    size_t iconInstancesOffset;
-    size_t iconInstancesSize;
+    VkDeviceSize cubesVerticesOffset;
+    VkDeviceSize cubesVerticesSize;
+    VkDeviceSize cubesVertexIndicesOffset;
+    VkDeviceSize cubesVertexIndicesSize;
+    VkDeviceSize cubeInstancesOffset;
+    VkDeviceSize cubeInstancesSize;
+    VkDeviceSize pointedCubeHostOffset;
+    VkDeviceSize pointedCubeDeviceOffset;
+    VkDeviceSize pointedCubeSize;
+    VkDeviceSize iconVerticesOffset;
+    VkDeviceSize iconVerticesSize;
+    VkDeviceSize iconInstancesOffset;
+    VkDeviceSize iconInstancesSize;
+    VkDeviceSize mvpOffset;
+    VkDeviceSize mvpSize;
+    VkDeviceSize depthImageOffset; ///< Offset of the depth image inside the memory
+    VkDeviceSize depthImageSize; ///< Size of the depth image inside the memory
+    VkDeviceSize textureImageOffset;
+    VkDeviceSize textureImageSize;
 
     size_t hostBufferOffset;
     size_t cubeBufferOffset;
@@ -155,12 +161,6 @@ typedef struct HxfGraphicsHandler {
     uint32_t swapchainImageCount; ///< The number of images of the swapchain
     VkFormat swapchainImageFormat; ///< The format of the swapchain’s images
     VkExtent2D swapchainExtent; ///< The extent of the swapchain’s images.
-
-    VkImage depthImage; ///< The depth image
-    VkImageView depthImageView; /// The image view of the depth image
-    VkFormat depthImageFormat; ///< The format of the depth image
-    size_t depthImageOffset; ///< Offset of the depth image inside the memory
-    size_t depthImageSize; ///< Size of the depth image inside the memory
 
     VkPipelineCache pipelineCache; ///< The cache for the pipelines.
     VkPipeline cubePipeline; ///< The pipeline that draw the cubes.
