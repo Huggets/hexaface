@@ -816,20 +816,19 @@ static void alignObject(const VkMemoryRequirements* restrict memoryRequirements,
  * It also updates the offsets.
  *
  * @param memoryRequirements The buffer memory requirements.
- * @param memoryOffset The current memory offset.
+ * @param bufferOffset The offset in memory of the buffer.
  * @param offsets An array of pointer to the offsets of the objects inside the buffer
  * that will be modified according the memoryRequirements.
- * The device offset itself should also be given.
  * @param offsetCount The number of elements of offsets.
  */
-static void alignBuffer(const VkMemoryRequirements* restrict memoryRequirements, VkDeviceSize* restrict memoryOffset, VkDeviceSize** restrict offsets, size_t offsetCount) {
-    VkDeviceSize additionalOffset = getAlignement(memoryRequirements->alignment, *memoryOffset);
+static void alignBuffer(const VkMemoryRequirements* restrict memoryRequirements, VkDeviceSize* restrict bufferOffset, VkDeviceSize** restrict offsets, size_t offsetCount) {
+    VkDeviceSize additionalOffset = getAlignement(memoryRequirements->alignment, *bufferOffset);
 
     for (int i = 0; i != offsetCount; i++) {
         *(offsets[i]) += additionalOffset;
     }
 
-    *memoryOffset += additionalOffset;
+    *bufferOffset += additionalOffset;
 }
 
 static void allocateMemory(HxfGraphicsHandler* restrict graphics, const TextureImageInfo* restrict textureInfo) {
@@ -837,6 +836,7 @@ static void allocateMemory(HxfGraphicsHandler* restrict graphics, const TextureI
     const VkDeviceSize textureImageSize = textureInfo->width * textureInfo->height * textureInfo->channels;
     VkDeviceSize deviceBufferSizeRequired;
     VkDeviceSize transferBufferSizeRequired;
+    VkDeviceSize deviceBufferDataSize;
     VkDeviceSize hostMemorySize;   ///< The total size of the host memory
     VkDeviceSize deviceMemorySize; //< The total size of the device memory
 
@@ -911,9 +911,9 @@ static void allocateMemory(HxfGraphicsHandler* restrict graphics, const TextureI
     bufferInfo.size = memoryOffset - drawingData->deviceBufferOffset;
     HXF_TRY_VK(vkCreateBuffer(graphics->device, &bufferInfo, NULL, &drawingData->deviceBuffer));
     vkGetBufferMemoryRequirements(graphics->device, drawingData->deviceBuffer, &memoryRequirements);
+    deviceBufferDataSize = bufferInfo.size;
 
     VkDeviceSize* deviceBufferOffsets[] = {
-        &drawingData->deviceBufferOffset,
         &drawingData->cubesVerticesOffset,
         &drawingData->cubesVertexIndicesOffset,
         &drawingData->cubeInstancesOffset,
@@ -921,8 +921,9 @@ static void allocateMemory(HxfGraphicsHandler* restrict graphics, const TextureI
         &drawingData->iconVerticesOffset,
         &drawingData->iconInstancesOffset
     };
-    alignBuffer(&memoryRequirements, &memoryOffset, deviceBufferOffsets, sizeof(deviceBufferOffsets) / sizeof(VkDeviceSize*));
-    deviceBufferSizeRequired = memoryOffset - drawingData->deviceBufferOffset;
+    alignBuffer(&memoryRequirements, &drawingData->deviceBufferOffset, deviceBufferOffsets, sizeof(deviceBufferOffsets) / sizeof(VkDeviceSize*));
+    deviceBufferSizeRequired = memoryRequirements.size;
+    memoryOffset = drawingData->deviceBufferOffset + deviceBufferSizeRequired;
 
 // --- End of the device buffer --- //
 
@@ -950,10 +951,10 @@ static void allocateMemory(HxfGraphicsHandler* restrict graphics, const TextureI
     vkGetBufferMemoryRequirements(graphics->device, drawingData->hostBuffer, &memoryRequirements);
 
     VkDeviceSize* hostBufferOffsets[] = {
-        &drawingData->hostBufferOffset,
         &drawingData->mvpOffset
     };
-    alignBuffer(&memoryRequirements, &memoryOffset, hostBufferOffsets, sizeof(hostBufferOffsets) / sizeof(VkDeviceSize*));
+    alignBuffer(&memoryRequirements, &drawingData->hostBufferOffset, hostBufferOffsets, sizeof(hostBufferOffsets) / sizeof(VkDeviceSize*));
+    memoryOffset = drawingData->hostBufferOffset + memoryRequirements.size;
 
 // --- End of host buffer data --- //
 
@@ -1001,7 +1002,7 @@ static void allocateMemory(HxfGraphicsHandler* restrict graphics, const TextureI
     memcpy(data + drawingData->iconInstancesOffset, drawingData->iconInstances, drawingData->iconInstancesSize);
     vkUnmapMemory(graphics->device, graphics->hostMemory); // todo removing unmapping, and use the same mapping to transfer the vertex/instance data and the texture image.
 
-    transferBuffers(graphics, drawingData->transferBuffer, drawingData->deviceBuffer, 0, 0, transferBufferSizeRequired);
+    transferBuffers(graphics, drawingData->transferBuffer, drawingData->deviceBuffer, 0, 0, deviceBufferDataSize);
 
     /*
     TEXTURE IMAGE TRANSFER
