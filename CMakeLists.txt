@@ -27,13 +27,10 @@ target_include_directories(hexaface PRIVATE include)
 add_custom_target(shaders)
 add_custom_command(
     TARGET shaders PRE_BUILD
-    COMMAND glslc
-    ARGS -o ${CMAKE_HOME_DIRECTORY}/appdata/shaders/vertex.spv ${CMAKE_SOURCE_DIR}/src/glsl/shader.vert
-)
-add_custom_command(
-    TARGET shaders PRE_BUILD
-    COMMAND glslc
-    ARGS -o ${CMAKE_HOME_DIRECTORY}/appdata/shaders/fragment.spv ${CMAKE_SOURCE_DIR}/src/glsl/shader.frag
+    COMMAND glslc ARGS -o ${CMAKE_HOME_DIRECTORY}/appdata/shaders/vertexCube.spv ${CMAKE_SOURCE_DIR}/src/glsl/cube.vert
+    COMMAND glslc ARGS -o ${CMAKE_HOME_DIRECTORY}/appdata/shaders/vertexIcon.spv ${CMAKE_SOURCE_DIR}/src/glsl/icon.vert
+    COMMAND glslc ARGS -o ${CMAKE_HOME_DIRECTORY}/appdata/shaders/fragmentCube.spv ${CMAKE_SOURCE_DIR}/src/glsl/cube.frag
+    COMMAND glslc ARGS -o ${CMAKE_HOME_DIRECTORY}/appdata/shaders/fragmentIcon.spv ${CMAKE_SOURCE_DIR}/src/glsl/icon.frag
 )
 
 ### Variable handling ###

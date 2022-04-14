@@ -9,7 +9,7 @@
  * @param index The index of the new face. It is incremented after the cube is added.
  */
 static void addDrawnFace(HxfCubeData* restrict face, const HxfVec3* restrict position, uint32_t textureIndex, size_t* index) {
-    face[*index].cubePosition = *position;
+    face[*index].position = *position;
     face[*index].textureIndex = textureIndex;
     (*index)++;
 }

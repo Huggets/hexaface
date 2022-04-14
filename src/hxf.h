@@ -64,4 +64,4 @@ void hxfFree(void* ptr);
  *
  * \return HXF_ERROR if the file could not be open, HXF_SUCCESS otherwise.
  */
-HxfResult readFile(const char* filename, void** data, size_t* size);
+HxfResult hxfReadFile(const char* filename, void** data, size_t* size);

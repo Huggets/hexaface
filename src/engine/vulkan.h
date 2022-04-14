@@ -14,9 +14,13 @@
  */
 #define HXF_MAX_RENDERED_FRAMES 2
 
-#define HXF_VERTEX_COUNT 24
-#define HXF_INDEX_COUNT 36
+#define HXF_CUBE_VERTEX_DATA_COUNT 24
+#define HXF_CUBE_VERTEX_INDEX_COUNT 36
 #define HXF_CUBE_COUNT (HXF_WORLD_LENGTH * HXF_WORLD_LENGTH * HXF_WORLD_LENGTH)
+
+#define HXF_ICON_VERTEX_DATA_COUNT 4
+#define HXF_ICON_VERTEX_INDEX_COUNT 6
+#define HXF_ICON_INSTANCE_DATA_COUNT 1
 
 #define HXF_TEXTURE_COUNT 5
 
@@ -27,21 +31,36 @@
 #define HXF_FACES_RIGHT 4
 #define HXF_FACES_LEFT 5
 
+typedef struct HxfCubeData {
+    alignas(16) HxfVec3 position;
+    alignas(4)  uint32_t textureIndex;
+} HxfCubeData;
+
 typedef struct HxfVertexData {
     alignas(16) HxfVec3 position;
     alignas(8)  HxfVec2 texelCoordinate;
+    alignas(4)  uint32_t textureIndex;
 } HxfVertexData;
-
-typedef struct HxfCubeData {
-    HxfVec3 cubePosition;
-    uint32_t textureIndex;
-} HxfCubeData;
 
 typedef struct HxfUniformBufferObject {
     alignas(16) HxfMat4 model;
     alignas(16) HxfMat4 view;
     alignas(16) HxfMat4 projection;
 } HxfUniformBufferObject;
+
+typedef struct HxfIconVertexData {
+    alignas(8) HxfVec2 position;
+    alignas(8) HxfVec2 texelCoordinate;
+} HxfIconVertexData;
+
+typedef struct HxfIconInstanceData {
+    alignas(4) uint32_t textureIndex;
+} HxfIconInstanceData;
+
+typedef struct HxfIconPushData {
+    alignas(4) uint32_t windowWidth;
+    alignas(4) uint32_t windowHeight;
+} HxfIconPushData;
 
 /**
  * @brief Contains information on the things that will be drawn.
@@ -51,7 +70,8 @@ typedef struct HxfUniformBufferObject {
  */
 typedef struct HxfDrawingData {
     VkBuffer hostBuffer; ///< Buffer on the host memory.
-    VkBuffer deviceBuffer; ///< Buffer on the local device memory for vertex relative data.
+    VkBuffer cubeBuffer; ///< Buffer that contains the cubes data
+    VkBuffer iconBuffer; ///< Buffer that contains the icons data
     VkBuffer facesSrcTransferBuffer;
     VkBuffer facesDstTransferBuffer;
     VkBuffer pointedCubeSrcBuffer;
@@ -69,11 +89,11 @@ typedef struct HxfDrawingData {
     /**
      * @brief The vertex position used to draw a cube.
      */
-    HxfVertexData cubesVertices[HXF_VERTEX_COUNT];
+    HxfVertexData cubesVertices[HXF_CUBE_VERTEX_DATA_COUNT];
     /**
      * @brief The index of the vertices that is used to draw a cube.
      */
-    uint32_t cubesVertexIndices[HXF_INDEX_COUNT];
+    uint32_t cubesVertexIndices[HXF_CUBE_VERTEX_INDEX_COUNT];
     /**
      * @brief The Uniform buffer object of the shaders.
      */
@@ -84,6 +104,11 @@ typedef struct HxfDrawingData {
      * Top, back, bottom, front, right, left.
      */
     HxfCubeData faces[6][HXF_CUBE_COUNT];
+
+    HxfIconVertexData iconVertices[HXF_ICON_VERTEX_DATA_COUNT];
+    HxfIconInstanceData iconInstances[HXF_ICON_INSTANCE_DATA_COUNT];
+    HxfIconPushData iconPush;
+    uint32_t iconVertexIndices[HXF_ICON_VERTEX_INDEX_COUNT];
 
     /**
      * @brief The number of front face to draw.
@@ -125,10 +150,15 @@ typedef struct HxfDrawingData {
     size_t pointedCubeSize;
     size_t textureImageOffset;
     size_t textureImageSize;
+    size_t iconVerticesOffset;
+    size_t iconVerticesSize;
+    size_t iconInstanceOffset;
+    size_t iconInstanceSize;
 
     size_t hostBufferOffset;
     size_t deviceBufferOffset;
     size_t facesSrcTransferBufferOffset;
+    size_t iconBufferOffset;
 } HxfDrawingData;
 
 typedef struct HxfEngine {
@@ -163,17 +193,22 @@ typedef struct HxfEngine {
     size_t depthImageOffset; ///< Offset of the depth image inside the memory
     size_t depthImageSize; ///< Size of the depth image inside the memory
 
-    VkPipeline graphicsPipeline;
-    VkPipelineLayout graphicsPipelineLayout;
+    VkPipeline cubePipeline;
+    VkPipeline iconPipeline;
+    VkPipelineLayout cubePipelineLayout;
+    VkPipelineLayout iconPipelineLayout;
     VkRenderPass renderPass;
-    VkDescriptorPool descriptorPool;
-    VkDescriptorSetLayout descriptorSetLayout;
-    VkDescriptorSet descriptorSets[HXF_MAX_RENDERED_FRAMES];
+    VkDescriptorPool cubeDescriptorPool;
+    VkDescriptorPool iconDescriptorPool;
+    VkDescriptorSetLayout cubeDescriptorSetLayout;
+    VkDescriptorSetLayout iconDescriptorSetLayout;
+    VkDescriptorSet cubeDescriptorSets[HXF_MAX_RENDERED_FRAMES];
+    VkDescriptorSet iconDescriptorSets[HXF_MAX_RENDERED_FRAMES];
 
     VkCommandPool commandPool;
     /**
      * @brief All the command buffers allocated from the commandPool.
-     * 
+     *
      * List of the command buffers:
      * - HXF_MAX_RENDERED_FRAMES draw command buffers
      * - 1 transfer command buffer
@@ -248,3 +283,5 @@ void hxfStopEngine(HxfEngine* restrict engine);
  * @param engine The engine that hold the buffer.
  */
 void hxfEngineUpdateCubeBuffer(HxfEngine* restrict engine);
+
+void hxfEngineUpdateIconBuffer(HxfEngine* restrict engine);

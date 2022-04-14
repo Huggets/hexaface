@@ -22,7 +22,7 @@ static VkShaderModule createShaderModule(HxfEngine* restrict engine, const char*
 static void createRenderPass(HxfEngine* restrict engine);
 
 /**
- * @brief Create the descriptor set layout, descriptor pool and descriptor sets.
+ * @brief Create the descriptors.
  *
  * @param engine The HxfEngine that own them.
  */
@@ -37,9 +37,8 @@ static VkShaderModule createShaderModule(HxfEngine* restrict engine, const char*
     void* code;
     size_t codeSize;
 
-    if (readFile(filename, &code, &codeSize) == HXF_ERROR) {
-        HXF_MSG_ERROR("Could not open a shader file");
-        exit(EXIT_FAILURE);
+    if (hxfReadFile(filename, &code, &codeSize) == HXF_ERROR) {
+        HXF_FATAL("Could not open a shader file");
     }
 
     VkShaderModuleCreateInfo info = {
@@ -48,10 +47,7 @@ static VkShaderModule createShaderModule(HxfEngine* restrict engine, const char*
         .codeSize = codeSize
     };
 
-    if (vkCreateShaderModule(engine->device, &info, NULL, &shaderModule)) {
-        HXF_MSG_ERROR("Could not create a shader module");
-        exit(EXIT_FAILURE);
-    }
+    HXF_TRY_VK(vkCreateShaderModule(engine->device, &info, NULL, &shaderModule));
 
     hxfFree(code);
 
@@ -117,16 +113,13 @@ static void createRenderPass(HxfEngine* restrict engine) {
         .pDependencies = &dependency,
     };
 
-    if (vkCreateRenderPass(engine->device, &renderPassInfo, NULL, &engine->renderPass)) {
-        HXF_MSG_ERROR("Could not create the render pass");
-        exit(EXIT_FAILURE);
-    }
+    HXF_TRY_VK(vkCreateRenderPass(engine->device, &renderPassInfo, NULL, &engine->renderPass));
 }
 
 static void createDescriptors(HxfEngine* restrict engine) {
-    // Create the descriptor set layout
+    // Descriptor set layouts
 
-    VkDescriptorSetLayoutBinding layoutBindings[] = {
+    VkDescriptorSetLayoutBinding cubeLayoutBindings[] = {
         { // ubo
             .binding = 0,
             .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
@@ -140,19 +133,30 @@ static void createDescriptors(HxfEngine* restrict engine) {
             .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT
         }
     };
-    VkDescriptorSetLayoutCreateInfo layoutInfo = {
+    VkDescriptorSetLayoutBinding iconLayoutBindings[] = {
+        {
+            .binding = 0,
+            .descriptorCount = 1,
+            .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+            .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT
+        }
+    };
+    VkDescriptorSetLayoutCreateInfo cubeLayoutInfo = {
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
         .bindingCount = 2,
-        .pBindings = layoutBindings,
+        .pBindings = cubeLayoutBindings,
     };
-    if (vkCreateDescriptorSetLayout(engine->device, &layoutInfo, NULL, &engine->descriptorSetLayout)) {
-        HXF_MSG_ERROR("Could not create the ubo descriptor set layout");
-        exit(EXIT_FAILURE);
-    }
+    VkDescriptorSetLayoutCreateInfo iconLayoutInfo = {
+        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+        .bindingCount = 1,
+        .pBindings = iconLayoutBindings
+    };
+    HXF_TRY_VK(vkCreateDescriptorSetLayout(engine->device, &cubeLayoutInfo, NULL, &engine->cubeDescriptorSetLayout));
+    HXF_TRY_VK(vkCreateDescriptorSetLayout(engine->device, &iconLayoutInfo, NULL, &engine->iconDescriptorSetLayout));
 
     // Create a descriptor pool
 
-    VkDescriptorPoolSize descriptorPoolSizes[] = {
+    VkDescriptorPoolSize cubeDescriptorPoolSizes[] = {
         { // ubo
             .descriptorCount = HXF_MAX_RENDERED_FRAMES,
             .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
@@ -162,71 +166,99 @@ static void createDescriptors(HxfEngine* restrict engine) {
             .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER
         }
     };
-    VkDescriptorPoolCreateInfo descriptorPoolInfo = {
+    VkDescriptorPoolSize iconDescriptorPoolSizes[] = {
+        { // texture sampler
+            .descriptorCount = HXF_MAX_RENDERED_FRAMES,
+            .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER
+        }
+    };
+
+    VkDescriptorPoolCreateInfo cubeDescriptorPoolInfo = {
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
         .maxSets = HXF_MAX_RENDERED_FRAMES,
         .poolSizeCount = 2,
-        .pPoolSizes = descriptorPoolSizes,
+        .pPoolSizes = cubeDescriptorPoolSizes,
     };
-    if (vkCreateDescriptorPool(engine->device, &descriptorPoolInfo, NULL, &engine->descriptorPool)) {
-        HXF_MSG_ERROR("Could not create the descriptor pool");
-        exit(EXIT_FAILURE);
-    }
+    VkDescriptorPoolCreateInfo iconDescriptorPoolInfo = {
+        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+        .maxSets = HXF_MAX_RENDERED_FRAMES,
+        .poolSizeCount = 1,
+        .pPoolSizes = iconDescriptorPoolSizes,
+    };
+    HXF_TRY_VK(vkCreateDescriptorPool(engine->device, &cubeDescriptorPoolInfo, NULL, &engine->cubeDescriptorPool));
+    HXF_TRY_VK(vkCreateDescriptorPool(engine->device, &iconDescriptorPoolInfo, NULL, &engine->iconDescriptorPool));
 
     // Copy HXF_MAX_RENDERED_FRAMES times engine->descriptorSetLayout
 
-    VkDescriptorSetLayout setLayouts[HXF_MAX_RENDERED_FRAMES] = { 0 };
+    VkDescriptorSetLayout cubeSetLayouts[HXF_MAX_RENDERED_FRAMES] = { 0 };
+    VkDescriptorSetLayout iconSetLayouts[HXF_MAX_RENDERED_FRAMES] = { 0 };
     for (int i = 0; i != HXF_MAX_RENDERED_FRAMES; i++) {
-        setLayouts[i] = engine->descriptorSetLayout;
+        cubeSetLayouts[i] = engine->cubeDescriptorSetLayout;
+        iconSetLayouts[i] = engine->iconDescriptorSetLayout;
     }
 
     // And allocate the descriptor sets from the pool
 
-    VkDescriptorSetAllocateInfo descriptorSetInfo = {
+    VkDescriptorSetAllocateInfo cubeDescriptorSetInfo = {
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-        .descriptorPool = engine->descriptorPool,
+        .descriptorPool = engine->cubeDescriptorPool,
         .descriptorSetCount = HXF_MAX_RENDERED_FRAMES,
-        .pSetLayouts = setLayouts,
+        .pSetLayouts = cubeSetLayouts,
     };
-    if (vkAllocateDescriptorSets(engine->device, &descriptorSetInfo, engine->descriptorSets)) {
-        HXF_MSG_ERROR("Could not allocate the descriptor sets");
-        exit(EXIT_FAILURE);
-    }
+    VkDescriptorSetAllocateInfo iconDescriptorSetInfo = {
+        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+        .descriptorPool = engine->iconDescriptorPool,
+        .descriptorSetCount = HXF_MAX_RENDERED_FRAMES,
+        .pSetLayouts = iconSetLayouts,
+    };
+    HXF_TRY_VK(vkAllocateDescriptorSets(engine->device, &cubeDescriptorSetInfo, engine->cubeDescriptorSets));
+    HXF_TRY_VK(vkAllocateDescriptorSets(engine->device, &iconDescriptorSetInfo, engine->iconDescriptorSets));
 
     // Update the descriptor sets
 
     for (int i = 0; i != HXF_MAX_RENDERED_FRAMES; i++) {
-        VkDescriptorBufferInfo bufferInfo = {
+        VkDescriptorBufferInfo uboBufferInfo = {
             .buffer = engine->drawingData.hostBuffer,
             .offset = engine->drawingData.uboOffset,
             .range = engine->drawingData.uboSize,
         };
-        VkDescriptorImageInfo imageInfo = {
+        VkDescriptorImageInfo textureImageInfo = {
             .sampler = engine->drawingData.textureSampler,
             .imageView = engine->drawingData.textureImageView,
             .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
         };
-        VkWriteDescriptorSet writeDescriptorSets[] = {
+        VkWriteDescriptorSet cubeWriteDescriptorSets[] = {
+            // Cube
             {
                 .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-                .dstSet = engine->descriptorSets[i],
+                .dstSet = engine->cubeDescriptorSets[i],
                 .dstBinding = 0,
                 .dstArrayElement = 0,
                 .descriptorCount = 1,
                 .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-                .pBufferInfo = &bufferInfo,
+                .pBufferInfo = &uboBufferInfo,
             },
             {
                 .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-                .dstSet = engine->descriptorSets[i],
+                .dstSet = engine->cubeDescriptorSets[i],
                 .dstBinding = 1,
                 .dstArrayElement = 0,
                 .descriptorCount = 1,
                 .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                .pImageInfo = &imageInfo
+                .pImageInfo = &textureImageInfo
+            },
+            // Icon
+            {
+                .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                .dstSet = engine->iconDescriptorSets[i],
+                .dstBinding = 0,
+                .dstArrayElement = 0,
+                .descriptorCount = 1,
+                .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                .pImageInfo = &textureImageInfo
             }
         };
-        vkUpdateDescriptorSets(engine->device, 2, writeDescriptorSets, 0, NULL);
+        vkUpdateDescriptorSets(engine->device, 3, cubeWriteDescriptorSets, 0, NULL);
     }
 }
 
@@ -234,32 +266,62 @@ void createGraphicsPipeline(HxfEngine* restrict engine) {
     createRenderPass(engine);
     createDescriptors(engine);
 
-    char vertexFileName[] = "/shaders/vertex.spv";
-    char fragmentFileName[] = "/shaders/fragment.spv";
-    char* vertexPath = hxfMalloc(sizeof(char) * (strlen(engine->appdataDirectory) + sizeof(vertexFileName)));
-    char* fragmentPath = hxfMalloc(sizeof(char) * (strlen(engine->appdataDirectory) + sizeof(fragmentFileName)));
-    strcpy(vertexPath, engine->appdataDirectory);
-    strcpy(fragmentPath, engine->appdataDirectory);
-    strcat(vertexPath, vertexFileName);
-    strcat(fragmentPath, fragmentFileName);
+    // Shader modules creation
 
-    VkShaderModule vertexModule = createShaderModule(engine, vertexPath);
-    VkShaderModule fragmentModule = createShaderModule(engine, fragmentPath);
+    const char cubeVertex[] = "/shaders/vertexCube.spv";
+    const char cubeFragment[] = "/shaders/fragmentCube.spv";
+    const char iconVertex[] = "/shaders/vertexIcon.spv";
+    const char iconFragment[] = "/shaders/fragmentIcon.spv";
 
-    hxfFree(vertexPath);
-    hxfFree(fragmentPath);
+    char* cubeVertexPath = hxfMalloc(sizeof(char) * (strlen(engine->appdataDirectory) + sizeof(cubeVertex)));
+    char* cubeFragmentPath = hxfMalloc(sizeof(char) * (strlen(engine->appdataDirectory) + sizeof(cubeFragment)));
+    char* iconVertexPath = hxfMalloc(sizeof(char) * (strlen(engine->appdataDirectory) + sizeof(iconVertex)));
+    char* iconFragmentPath = hxfMalloc(sizeof(char) * (strlen(engine->appdataDirectory) + sizeof(iconFragment)));
+    strcpy(cubeVertexPath, engine->appdataDirectory);
+    strcpy(cubeFragmentPath, engine->appdataDirectory);
+    strcpy(iconVertexPath, engine->appdataDirectory);
+    strcpy(iconFragmentPath, engine->appdataDirectory);
 
-    VkPipelineShaderStageCreateInfo stages[] = {
+    strcat(cubeVertexPath, cubeVertex);
+    strcat(cubeFragmentPath, cubeFragment);
+    strcat(iconVertexPath, iconVertex);
+    strcat(iconFragmentPath, iconFragment);
+
+    VkShaderModule cubeVertexModule = createShaderModule(engine, cubeVertexPath);
+    VkShaderModule cubeFragmentModule = createShaderModule(engine, cubeFragmentPath);
+    VkShaderModule iconVertexModule = createShaderModule(engine, iconVertexPath);
+    VkShaderModule iconFragmentModule = createShaderModule(engine, iconFragmentPath);
+
+    hxfFree(cubeVertexPath);
+    hxfFree(cubeFragmentPath);
+    hxfFree(iconVertexPath);
+    hxfFree(iconFragmentPath);
+
+    VkPipelineShaderStageCreateInfo cubeStages[] = {
         {
             .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
             .stage = VK_SHADER_STAGE_VERTEX_BIT,
-            .module = vertexModule,
+            .module = cubeVertexModule,
             .pName = "main",
         },
         {
             .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
             .stage = VK_SHADER_STAGE_FRAGMENT_BIT,
-            .module = fragmentModule,
+            .module = cubeFragmentModule,
+            .pName = "main",
+        },
+    };
+    VkPipelineShaderStageCreateInfo iconStages[] = {
+        {
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+            .stage = VK_SHADER_STAGE_VERTEX_BIT,
+            .module = iconVertexModule,
+            .pName = "main",
+        },
+        {
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+            .stage = VK_SHADER_STAGE_FRAGMENT_BIT,
+            .module = iconFragmentModule,
             .pName = "main",
         },
     };
@@ -293,7 +355,7 @@ void createGraphicsPipeline(HxfEngine* restrict engine) {
             .binding = 1,
             .location = 1,
             .format = VK_FORMAT_R32G32B32_SFLOAT,
-            .offset = offsetof(HxfCubeData, cubePosition)
+            .offset = offsetof(HxfCubeData, position)
         },
         { // Texture index
             .binding = 1,
@@ -302,13 +364,52 @@ void createGraphicsPipeline(HxfEngine* restrict engine) {
             .offset = offsetof(HxfCubeData, textureIndex)
         }
     };
+    VkVertexInputBindingDescription iconBindingDescriptions[] = {
+        {
+            .binding = 0,
+            .inputRate = VK_VERTEX_INPUT_RATE_VERTEX,
+            .stride = sizeof(HxfIconVertexData)
+        },
+        {
+            .binding = 1,
+            .inputRate = VK_VERTEX_INPUT_RATE_INSTANCE,
+            .stride = sizeof(HxfIconInstanceData)
+        }
+    };
+    VkVertexInputAttributeDescription iconAttributeDescriptions[] = {
+        {
+            .binding = 0,
+            .location = 0,
+            .format = VK_FORMAT_R32G32_SFLOAT,
+            .offset = offsetof(HxfIconVertexData, position)
+        },
+        {
+            .binding = 0,
+            .location = 1,
+            .format = VK_FORMAT_R32G32_SFLOAT,
+            .offset = offsetof(HxfIconVertexData, texelCoordinate)
+        },
+        {
+            .binding = 1,
+            .location = 2,
+            .format = VK_FORMAT_R32_UINT,
+            .offset = offsetof(HxfIconInstanceData, textureIndex)
+        }
+    };
 
-    VkPipelineVertexInputStateCreateInfo vertexInputInfo = {
+    VkPipelineVertexInputStateCreateInfo cubeInputInfo = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
         .vertexBindingDescriptionCount = 2,
         .pVertexBindingDescriptions = cubeBindingDescriptions,
         .vertexAttributeDescriptionCount = 4,
         .pVertexAttributeDescriptions = cubeAttributeDescriptions,
+    };
+    VkPipelineVertexInputStateCreateInfo iconInputInfo = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
+        .vertexBindingDescriptionCount = 2,
+        .pVertexBindingDescriptions = iconBindingDescriptions,
+        .vertexAttributeDescriptionCount = 3,
+        .pVertexAttributeDescriptions = iconAttributeDescriptions,
     };
 
     VkPipelineInputAssemblyStateCreateInfo inputAssemblyInfo = {
@@ -347,7 +448,7 @@ void createGraphicsPipeline(HxfEngine* restrict engine) {
         .polygonMode = VK_POLYGON_MODE_FILL,
         .cullMode = VK_CULL_MODE_BACK_BIT,
         .frontFace = VK_FRONT_FACE_CLOCKWISE,
-        .lineWidth = 1.f,
+        .lineWidth = 1.0f,
     };
 
     VkPipelineMultisampleStateCreateInfo multisampleInfo = {
@@ -372,45 +473,77 @@ void createGraphicsPipeline(HxfEngine* restrict engine) {
         .pAttachments = &colorBlendAttachment,
     };
 
-    // Create the pipeline layout
-    VkDescriptorSetLayout setLayouts[] = {
-        engine->descriptorSetLayout
-    };
-    VkPipelineLayoutCreateInfo pipelineLayoutInfo = { 0 };
-    pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    pipelineLayoutInfo.setLayoutCount = 1;
-    pipelineLayoutInfo.pSetLayouts = setLayouts;
-    pipelineLayoutInfo.pushConstantRangeCount = 0;
-    pipelineLayoutInfo.pPushConstantRanges = NULL;
+    // Create the pipeline layouts
 
-    if (vkCreatePipelineLayout(engine->device, &pipelineLayoutInfo, NULL, &engine->graphicsPipelineLayout)) {
-        HXF_MSG_ERROR("Could not create the graphics pipeline layout");
-        exit(EXIT_FAILURE);
-    }
+    VkDescriptorSetLayout cubeSetLayouts[] = {
+        engine->cubeDescriptorSetLayout
+    };
+    VkPipelineLayoutCreateInfo cubePipelineLayoutInfo = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+        .setLayoutCount = 1,
+        .pSetLayouts = cubeSetLayouts,
+        .pushConstantRangeCount = 0,
+        .pPushConstantRanges = NULL
+    };
+
+    VkDescriptorSetLayout iconSetLayouts[] = {
+        engine->iconDescriptorSetLayout
+    };
+    VkPushConstantRange iconPushConstantRanges[] = {
+        {
+            .offset = 0,
+            .size = sizeof(HxfIconPushData),
+            .stageFlags = VK_SHADER_STAGE_VERTEX_BIT
+        }
+    };
+    VkPipelineLayoutCreateInfo iconPipelineLayoutInfo = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+        .setLayoutCount = 1,
+        .pSetLayouts = iconSetLayouts,
+        .pushConstantRangeCount = 1,
+        .pPushConstantRanges = iconPushConstantRanges
+    };
+
+    HXF_TRY_VK(vkCreatePipelineLayout(engine->device, &cubePipelineLayoutInfo, NULL, &engine->cubePipelineLayout));
+    HXF_TRY_VK(vkCreatePipelineLayout(engine->device, &iconPipelineLayoutInfo, NULL, &engine->iconPipelineLayout));
 
     // Create the graphics pipeline
-    VkGraphicsPipelineCreateInfo pipelineInfo = { 0 };
-    pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-    pipelineInfo.stageCount = 2;
-    pipelineInfo.pStages = stages;
-    pipelineInfo.pVertexInputState = &vertexInputInfo;
-    pipelineInfo.pInputAssemblyState = &inputAssemblyInfo;
-    pipelineInfo.pTessellationState = NULL;
-    pipelineInfo.pViewportState = &viewportInfo;
-    pipelineInfo.pRasterizationState = &rasterizationInfo;
-    pipelineInfo.pMultisampleState = &multisampleInfo;
-    pipelineInfo.pDepthStencilState = &depthStencilInfo;
-    pipelineInfo.pColorBlendState = &colorBlendInfo;
-    pipelineInfo.pDynamicState = NULL;
-    pipelineInfo.layout = engine->graphicsPipelineLayout;
-    pipelineInfo.renderPass = engine->renderPass;
-    pipelineInfo.subpass = 0;
+    VkGraphicsPipelineCreateInfo pipelineInfos[] = {
+        { // Cube pipeline
+            .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
+            .stageCount = 2,
+            .pStages = cubeStages,
+            .pVertexInputState = &cubeInputInfo,
+            .pInputAssemblyState = &inputAssemblyInfo,
+            .pViewportState = &viewportInfo,
+            .pRasterizationState = &rasterizationInfo,
+            .pMultisampleState = &multisampleInfo,
+            .pDepthStencilState = &depthStencilInfo,
+            .pColorBlendState = &colorBlendInfo,
+            .layout = engine->cubePipelineLayout,
+            .renderPass = engine->renderPass,
+        },
+        { // Icon pipeline
+            .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
+            .stageCount = 2,
+            .pStages = iconStages,
+            .pVertexInputState = &iconInputInfo,
+            .pInputAssemblyState = &inputAssemblyInfo,
+            .pViewportState = &viewportInfo,
+            .pRasterizationState = &rasterizationInfo,
+            .pDepthStencilState = &depthStencilInfo,
+            .pMultisampleState = &multisampleInfo,
+            .pColorBlendState = &colorBlendInfo,
+            .layout = engine->iconPipelineLayout,
+            .renderPass = engine->renderPass,
+            .basePipelineIndex = 0
+        }
+    };
 
-    if (vkCreateGraphicsPipelines(engine->device, NULL, 1, &pipelineInfo, NULL, &engine->graphicsPipeline)) {
-        HXF_MSG_ERROR("Could not create the graphics pipeline");
-        exit(EXIT_FAILURE);
-    }
+    HXF_TRY_VK(vkCreateGraphicsPipelines(engine->device, NULL, 2, pipelineInfos, NULL, &engine->cubePipeline));
 
-    vkDestroyShaderModule(engine->device, fragmentModule, NULL);
-    vkDestroyShaderModule(engine->device, vertexModule, NULL);
+    vkDestroyShaderModule(engine->device, cubeFragmentModule, NULL);
+    vkDestroyShaderModule(engine->device, iconFragmentModule, NULL);
+    vkDestroyShaderModule(engine->device, cubeVertexModule, NULL);
+    vkDestroyShaderModule(engine->device, iconVertexModule, NULL);
 }

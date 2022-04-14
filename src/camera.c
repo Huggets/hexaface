@@ -6,7 +6,7 @@
 
 void hxfUpdatePointedCube(HxfCamera* restrict camera, const HxfWorld* restrict world) {
     const int maxPointingDistance = 5; // Maximum distance at which the block can be selected
-    const int precision = 4;
+    const int precision = 50;
 
     int i = 1;
     int cubeNotFound = 1;

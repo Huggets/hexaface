@@ -86,6 +86,22 @@ void hxfStartApp(const HxfAppParam* restrict param) {
                 .view = HXF_MAT4_IDENTITY,
                 .projection = hxfPerspectiveProjectionMatrix(0.01f, 128.0f, M_PI / 180.0f * 60.0f, (float)param->windowWidth / (float)param->windowHeight)
             },
+            .iconVertices = {
+                { { -0.1f, -0.1f }, { 0.0f / TEXTURE_WIDTH, 0.0f / TEXTURE_HEIGHT } },
+                { { 0.1f, -0.1f }, { 16.0f / TEXTURE_WIDTH, 0.0f / TEXTURE_HEIGHT } },
+                { { 0.1f, 0.1f }, { 16.0f / TEXTURE_WIDTH, 16.0f / TEXTURE_HEIGHT } },
+                { { -0.1f, 0.1f }, { 0.0f / TEXTURE_WIDTH, 16.0f / TEXTURE_HEIGHT } },
+            },
+            .iconVertexIndices = {
+                0, 1, 2, 2, 3, 0
+            },
+            .iconPush = {
+                .windowWidth = param->windowWidth,
+                .windowHeight = param->windowHeight
+            },
+            .iconInstances = {
+                { 1 }
+            }
         },
         .game.camera = {
             .position = { 0.0f, 3.0f, -2.0f },

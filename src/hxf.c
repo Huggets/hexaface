@@ -1,4 +1,5 @@
 #include "hxf.h"
+#include <string.h>
 
 // Used to find some errors with the allocations.
 // For example, to verify hxfFree was called each time it was needed, you can verify at the end
@@ -102,7 +103,7 @@ void hxfFree(void* ptr) {
 #endif
 }
 
-HxfResult readFile(const char* filename, void** data, size_t* size) {
+HxfResult hxfReadFile(const char* filename, void** data, size_t* size) {
     FILE* file = fopen(filename, "rb");
     if (!file) {
         return HXF_ERROR;

@@ -507,29 +507,29 @@ static void recordDrawCommandBuffer(HxfEngine* restrict engine, uint32_t imageIn
     }
 
     vkCmdBeginRenderPass(engine->drawCommandBuffers[currentFrameIndex], &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
-    vkCmdBindPipeline(engine->drawCommandBuffers[currentFrameIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, engine->graphicsPipeline);
+    vkCmdBindPipeline(engine->drawCommandBuffers[currentFrameIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, engine->cubePipeline);
     vkCmdBindDescriptorSets(
         engine->drawCommandBuffers[currentFrameIndex],
         VK_PIPELINE_BIND_POINT_GRAPHICS,
-        engine->graphicsPipelineLayout,
-        0, 1, &engine->descriptorSets[currentFrameIndex],
+        engine->cubePipelineLayout,
+        0, 1, &engine->cubeDescriptorSets[currentFrameIndex],
         0, NULL
     );
     VkBuffer boundBuffers[] = {
-        engine->drawingData.deviceBuffer,
-        engine->drawingData.deviceBuffer
+        engine->drawingData.cubeBuffer,
+        engine->drawingData.cubeBuffer
     };
     VkDeviceSize offsets[] = {
         engine->drawingData.cubesVerticesOffset - engine->drawingData.deviceBufferOffset,
         engine->drawingData.facesOffset - engine->drawingData.deviceBufferOffset
     };
     vkCmdBindVertexBuffers(engine->drawCommandBuffers[currentFrameIndex], 0, 2, boundBuffers, offsets);
-    vkCmdBindIndexBuffer(engine->drawCommandBuffers[currentFrameIndex], engine->drawingData.deviceBuffer, engine->drawingData.cubesVertexIndicesOffset - engine->drawingData.deviceBufferOffset, VK_INDEX_TYPE_UINT32);
+    vkCmdBindIndexBuffer(engine->drawCommandBuffers[currentFrameIndex], engine->drawingData.cubeBuffer, engine->drawingData.cubesVertexIndicesOffset - engine->drawingData.deviceBufferOffset, VK_INDEX_TYPE_UINT32);
 
     // The pointed cube
 
     if (engine->camera->isPointingToCube) {
-        vkCmdDrawIndexed(engine->drawCommandBuffers[currentFrameIndex], HXF_INDEX_COUNT, 1, 0, 0, HXF_CUBE_COUNT * 6);
+        vkCmdDrawIndexed(engine->drawCommandBuffers[currentFrameIndex], HXF_CUBE_VERTEX_INDEX_COUNT, 1, 0, 0, HXF_CUBE_COUNT * 6);
     }
 
     // All the cubes
@@ -541,6 +541,22 @@ static void recordDrawCommandBuffer(HxfEngine* restrict engine, uint32_t imageIn
     vkCmdDrawIndexed(engine->drawCommandBuffers[currentFrameIndex], 6, engine->drawingData.faceFrontCount, 18, 0, HXF_CUBE_COUNT * 3);
     vkCmdDrawIndexed(engine->drawCommandBuffers[currentFrameIndex], 6, engine->drawingData.faceRightCount, 24, 0, HXF_CUBE_COUNT * 4);
     vkCmdDrawIndexed(engine->drawCommandBuffers[currentFrameIndex], 6, engine->drawingData.faceLeftCount, 30, 0, HXF_CUBE_COUNT * 5);
+
+    vkCmdBindPipeline(engine->drawCommandBuffers[currentFrameIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, engine->iconPipeline);
+    vkCmdBindDescriptorSets(
+        engine->drawCommandBuffers[currentFrameIndex],
+        VK_PIPELINE_BIND_POINT_GRAPHICS,
+        engine->iconPipelineLayout,
+        0, 1, &engine->iconDescriptorSets[currentFrameIndex],
+        0, NULL
+    );
+    boundBuffers[0] = engine->drawingData.iconBuffer;
+    boundBuffers[1] = engine->drawingData.iconBuffer;
+    offsets[0] = engine->drawingData.iconVerticesOffset - engine->drawingData.iconBufferOffset;
+    offsets[1] = engine->drawingData.iconInstanceOffset - engine->drawingData.iconBufferOffset;
+    vkCmdBindVertexBuffers(engine->drawCommandBuffers[currentFrameIndex], 0, 2, boundBuffers, offsets);
+    vkCmdPushConstants(engine->drawCommandBuffers[currentFrameIndex], engine->iconPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, offsetof(HxfIconPushData, windowHeight) + sizeof(uint32_t), &engine->drawingData.iconPush);
+    vkCmdDrawIndexed(engine->drawCommandBuffers[currentFrameIndex], HXF_ICON_VERTEX_INDEX_COUNT, 1, 0, 0, 0);
 
     vkCmdEndRenderPass(engine->drawCommandBuffers[currentFrameIndex]);
 
@@ -555,17 +571,14 @@ static void transferBuffers(HxfEngine* restrict engine, VkBuffer src, VkBuffer d
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
         .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT
     };
-    if (vkBeginCommandBuffer(*engine->transferCommandBuffer, &beginInfo)) {
-        HXF_MSG_ERROR("Could not begin to record the command buffer");
-        exit(EXIT_FAILURE);
-    }
+    HXF_TRY_VK(vkBeginCommandBuffer(*engine->transferCommandBuffer, &beginInfo));
     VkBufferCopy copyRegion = {
-        .dstOffset = srcOffset,
-        .srcOffset = dstOffset,
+        .srcOffset = srcOffset,
+        .dstOffset = dstOffset,
         .size = size
     };
     vkCmdCopyBuffer(*engine->transferCommandBuffer, src, dst, 1, &copyRegion);
-    vkEndCommandBuffer(*engine->transferCommandBuffer);
+    HXF_TRY_VK(vkEndCommandBuffer(*engine->transferCommandBuffer));
 
     VkSubmitInfo submitInfo = {
         .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
@@ -823,11 +836,11 @@ static uint32_t getMemoryTypeIndex(const VkPhysicalDeviceMemoryProperties* restr
  * @param changeSize If set to 1 then objectSize is modified according to the memory requirements. If set
  * to 0, objectSize is not modified and is just used to increase the memory offset.
  */
-static void alignObject(VkMemoryRequirements* restrict memoryRequirements, VkDeviceSize* restrict memoryOffset, VkDeviceSize* restrict objectOffset, VkDeviceSize* restrict objectSize, int changeSize) {
+static void alignObject(const VkMemoryRequirements* restrict memoryRequirements, VkDeviceSize* restrict memoryOffset, VkDeviceSize* restrict objectOffset, VkDeviceSize* restrict objectSize, int changeSize) {
     VkDeviceSize additionalOffset;
     VkDeviceSize alignement = *memoryOffset % memoryRequirements->alignment;
     if (alignement == 0) additionalOffset = 0;
-    else                 additionalOffset = memoryRequirements->alignment - alignement;
+    else additionalOffset = memoryRequirements->alignment - alignement;
 
     *objectOffset = *memoryOffset + additionalOffset;
 
@@ -836,16 +849,41 @@ static void alignObject(VkMemoryRequirements* restrict memoryRequirements, VkDev
     *memoryOffset = *objectOffset + *objectSize;
 }
 
+/**
+ * @brief Align the buffer in memory according to the memory requirements.
+ *
+ * It also updates the offsets.
+ *
+ * @param memoryRequirements
+ * @param memoryOffset
+ * @param offsets
+ * @param offsetCount
+ */
+static void alignBuffer(const VkMemoryRequirements* restrict memoryRequirements, VkDeviceSize* restrict memoryOffset, VkDeviceSize** restrict offsets, size_t offsetCount) {
+    VkDeviceSize additionalOffset;
+    VkDeviceSize alignement = *memoryOffset % memoryRequirements->alignment;
+    if (alignement == 0) additionalOffset = 0;
+    else additionalOffset = memoryRequirements->alignment - alignement;
+
+    for (int i = 0; i != offsetCount; i++) {
+        *(offsets[i]) += additionalOffset;
+    }
+
+    *memoryOffset += additionalOffset;
+}
+
 static void allocateMemory(HxfEngine* restrict engine, const TextureImageInfo* restrict textureInfo) {
     HxfDrawingData* const restrict drawingData = &engine->drawingData; // Reference to the drawing data
     VkDeviceSize hostBufferSizeNeeded;
     VkDeviceSize deviceBufferSizeNeeded;
+    VkDeviceSize iconBufferSizeNeeded;
     VkDeviceSize hostMemorySize;        // The total size of the host memory
     VkDeviceSize deviceMemorySize;      // The total size of the device memory
     const VkDeviceSize textureImageSize = textureInfo->width * textureInfo->height * textureInfo->channels;
 
-    VkBuffer dstTransferBuffer;
     VkBuffer srcTransferBuffer;
+    VkBuffer dstTransferBuffer;
+    VkDeviceSize transferBufferSizeNeeded;
 
     VkBufferCreateInfo bufferInfo = {
         // Default value that does not change accross the different buffer
@@ -878,7 +916,7 @@ static void allocateMemory(HxfEngine* restrict engine, const TextureImageInfo* r
 
     drawingData->deviceBufferOffset = memoryOffset;
 
-    // Vertices
+    // Vertex data
     drawingData->cubesVerticesOffset = memoryOffset;
     drawingData->cubesVerticesSize = sizeof(drawingData->cubesVertices);
     memoryOffset = drawingData->cubesVerticesOffset + drawingData->cubesVerticesSize;
@@ -896,7 +934,7 @@ static void allocateMemory(HxfEngine* restrict engine, const TextureImageInfo* r
     alignObject(&memoryRequirements, &memoryOffset, &drawingData->facesOffset, &drawingData->facesSize, 1);
 
     // Pointed cube
-    bufferInfo.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+    bufferInfo.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT;
     bufferInfo.size = sizeof(HxfCubeData);
     HXF_TRY_VK(vkCreateBuffer(engine->device, &bufferInfo, NULL, &drawingData->pointedCubeDstBuffer));
     vkGetBufferMemoryRequirements(engine->device, drawingData->pointedCubeDstBuffer, &memoryRequirements);
@@ -909,17 +947,48 @@ static void allocateMemory(HxfEngine* restrict engine, const TextureImageInfo* r
     // Device buffer
     bufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
     bufferInfo.size = deviceBufferSizeNeeded;
-    HXF_TRY_VK(vkCreateBuffer(engine->device, &bufferInfo, NULL, &drawingData->deviceBuffer));
-    vkGetBufferMemoryRequirements(engine->device, drawingData->deviceBuffer, &memoryRequirements);
+    HXF_TRY_VK(vkCreateBuffer(engine->device, &bufferInfo, NULL, &drawingData->cubeBuffer));
+    vkGetBufferMemoryRequirements(engine->device, drawingData->cubeBuffer, &memoryRequirements);
     memoryOffset = drawingData->deviceBufferOffset + memoryRequirements.size;
+
+// --- Start of the icon buffer --- //
+
+    drawingData->iconBufferOffset = memoryOffset;
+
+    // Icon vertex data
+    drawingData->iconVerticesOffset = memoryOffset;
+    drawingData->iconVerticesSize = sizeof(drawingData->iconVertices);
+    memoryOffset = drawingData->iconVerticesOffset + drawingData->iconVerticesSize;
+
+    // Icon instance data
+    drawingData->iconInstanceOffset = memoryOffset;
+    drawingData->iconInstanceSize = sizeof(drawingData->iconInstances);
+    memoryOffset = drawingData->iconInstanceOffset + drawingData->iconInstanceSize;
+
+// --- End of the icon buffer --- //
+
+    iconBufferSizeNeeded = memoryOffset - drawingData->iconBufferOffset;
+
+    bufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+    bufferInfo.size = iconBufferSizeNeeded;
+    HXF_TRY_VK(vkCreateBuffer(engine->device, &bufferInfo, NULL, &drawingData->iconBuffer));
+    vkGetBufferMemoryRequirements(engine->device, drawingData->iconBuffer, &memoryRequirements);
+
+    VkDeviceSize* iconObjectsOffset[] = {
+        &drawingData->iconBufferOffset,
+        &drawingData->iconVerticesOffset
+    };
+    alignBuffer(&memoryRequirements, &memoryOffset, iconObjectsOffset, 1);
+
+    transferBufferSizeNeeded = memoryOffset - drawingData->deviceBufferOffset;
 
     deviceMemorySize = memoryOffset;
 
-    // Create the dst buffer that has the same size as the device buffer
+    // Create the dst buffer that will receive the cubes and icon data
+
     bufferInfo.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-    bufferInfo.size = deviceBufferSizeNeeded;
+    bufferInfo.size = transferBufferSizeNeeded;
     HXF_TRY_VK(vkCreateBuffer(engine->device, &bufferInfo, NULL, &dstTransferBuffer));
-    vkGetBufferMemoryRequirements(engine->device, dstTransferBuffer, &memoryRequirements);
 
     /***************
      * HOST MEMORY *
@@ -965,7 +1034,7 @@ static void allocateMemory(HxfEngine* restrict engine, const TextureImageInfo* r
 
     // Src transfer buffer
     bufferInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-    bufferInfo.size = max(deviceBufferSizeNeeded, textureImageSize); // It must be able to store the cubes data and the texture image
+    bufferInfo.size = max(transferBufferSizeNeeded, textureImageSize); // It must be able to store the cubes data and the texture image
     HXF_TRY_VK(vkCreateBuffer(engine->device, &bufferInfo, NULL, &srcTransferBuffer));
     vkGetBufferMemoryRequirements(engine->device, srcTransferBuffer, &memoryRequirements);
 
@@ -990,25 +1059,28 @@ static void allocateMemory(HxfEngine* restrict engine, const TextureImageInfo* r
     vkBindBufferMemory(engine->device, srcTransferBuffer, engine->hostMemory, 0);
     vkBindBufferMemory(engine->device, dstTransferBuffer, engine->deviceMemory, drawingData->deviceBufferOffset);
     vkBindBufferMemory(engine->device, drawingData->hostBuffer, engine->hostMemory, drawingData->hostBufferOffset);
-    vkBindBufferMemory(engine->device, drawingData->deviceBuffer, engine->deviceMemory, drawingData->deviceBufferOffset);
+    vkBindBufferMemory(engine->device, drawingData->cubeBuffer, engine->deviceMemory, drawingData->deviceBufferOffset);
     vkBindBufferMemory(engine->device, drawingData->facesSrcTransferBuffer, engine->hostMemory, drawingData->facesSrcTransferBufferOffset);
     vkBindBufferMemory(engine->device, drawingData->facesDstTransferBuffer, engine->deviceMemory, drawingData->facesOffset);
     vkBindBufferMemory(engine->device, drawingData->pointedCubeSrcBuffer, engine->hostMemory, engine->drawingData.pointedCubeHostOffset);
     vkBindBufferMemory(engine->device, drawingData->pointedCubeDstBuffer, engine->deviceMemory, engine->drawingData.pointedCubeDeviceOffset);
+    vkBindBufferMemory(engine->device, drawingData->iconBuffer, engine->deviceMemory, drawingData->iconBufferOffset);
     vkBindImageMemory(engine->device, engine->depthImage, engine->deviceMemory, engine->depthImageOffset);
     vkBindImageMemory(engine->device, drawingData->textureImage, engine->deviceMemory, drawingData->textureImageOffset);
 
     // Transfer the device buffer data, from the host to the device memory
 
     void* data;
-    HXF_TRY_VK(vkMapMemory(engine->device, engine->hostMemory, 0, deviceBufferSizeNeeded, 0, &data));
+    HXF_TRY_VK(vkMapMemory(engine->device, engine->hostMemory, 0, transferBufferSizeNeeded, 0, &data));
     data -= drawingData->deviceBufferOffset; // To remove the device buffer offset and start at 0
     memcpy(data + drawingData->cubesVerticesOffset, drawingData->cubesVertices, drawingData->cubesVerticesSize);
     memcpy(data + drawingData->cubesVertexIndicesOffset, drawingData->cubesVertexIndices, drawingData->cubesVertexIndicesSize);
     memcpy(data + drawingData->facesOffset, drawingData->faces, drawingData->facesSize);
+    memcpy(data + drawingData->iconVerticesOffset, drawingData->iconVertices, drawingData->iconVerticesSize);
+    memcpy(data + drawingData->iconInstanceOffset, drawingData->iconInstances, drawingData->iconInstanceSize);
     vkUnmapMemory(engine->device, engine->hostMemory);
 
-    transferBuffers(engine, srcTransferBuffer, dstTransferBuffer, 0, 0, deviceBufferSizeNeeded);
+    transferBuffers(engine, srcTransferBuffer, dstTransferBuffer, 0, 0, transferBufferSizeNeeded);
 
     /*
     TEXTURE IMAGE TRANSFER
@@ -1295,12 +1367,16 @@ void hxfDestroyEngine(HxfEngine* restrict engine) {
     }
     hxfFree(engine->swapchainFramebuffers);
 
-    vkDestroyPipeline(engine->device, engine->graphicsPipeline, NULL);
-    vkDestroyPipelineLayout(engine->device, engine->graphicsPipelineLayout, NULL);
+    vkDestroyPipeline(engine->device, engine->cubePipeline, NULL);
+    vkDestroyPipeline(engine->device, engine->iconPipeline, NULL);
+    vkDestroyPipelineLayout(engine->device, engine->cubePipelineLayout, NULL);
+    vkDestroyPipelineLayout(engine->device, engine->iconPipelineLayout, NULL);
     vkDestroyRenderPass(engine->device, engine->renderPass, NULL);
 
-    vkDestroyDescriptorPool(engine->device, engine->descriptorPool, NULL);
-    vkDestroyDescriptorSetLayout(engine->device, engine->descriptorSetLayout, NULL);
+    vkDestroyDescriptorPool(engine->device, engine->cubeDescriptorPool, NULL);
+    vkDestroyDescriptorSetLayout(engine->device, engine->cubeDescriptorSetLayout, NULL);
+    vkDestroyDescriptorPool(engine->device, engine->iconDescriptorPool, NULL);
+    vkDestroyDescriptorSetLayout(engine->device, engine->iconDescriptorSetLayout, NULL);
 
     for (int i = engine->swapchainImageCount - 1; i != -1; i--) {
         vkDestroyImageView(engine->device, engine->swapchainImageViews[i], NULL);
@@ -1320,8 +1396,9 @@ void hxfDestroyEngine(HxfEngine* restrict engine) {
     vkDestroyBuffer(engine->device, engine->drawingData.pointedCubeDstBuffer, NULL);
     vkDestroyBuffer(engine->device, engine->drawingData.facesSrcTransferBuffer, NULL);
     vkDestroyBuffer(engine->device, engine->drawingData.facesDstTransferBuffer, NULL);
-    vkDestroyBuffer(engine->device, engine->drawingData.deviceBuffer, NULL);
+    vkDestroyBuffer(engine->device, engine->drawingData.cubeBuffer, NULL);
     vkDestroyBuffer(engine->device, engine->drawingData.hostBuffer, NULL);
+    vkDestroyBuffer(engine->device, engine->drawingData.iconBuffer, NULL);
     vkFreeMemory(engine->device, engine->deviceMemory, NULL);
     vkFreeMemory(engine->device, engine->hostMemory, NULL);
 
@@ -1391,12 +1468,18 @@ void hxfStopEngine(HxfEngine* restrict engine) {
 
 void hxfEngineUpdateCubeBuffer(HxfEngine* restrict engine) {
     void* data;
-    if (vkMapMemory(engine->device, engine->hostMemory, engine->drawingData.facesSrcTransferBufferOffset, engine->drawingData.facesSize, 0, &data)) {
-        HXF_MSG_ERROR("Could not map memory");
-        exit(EXIT_FAILURE);
-    }
+    HXF_TRY_VK(vkMapMemory(engine->device, engine->hostMemory, engine->drawingData.facesSrcTransferBufferOffset, engine->drawingData.facesSize, 0, &data));
     memcpy(data, engine->drawingData.faces, engine->drawingData.facesSize);
     vkUnmapMemory(engine->device, engine->hostMemory);
 
     transferBuffers(engine, engine->drawingData.facesSrcTransferBuffer, engine->drawingData.facesDstTransferBuffer, 0, 0, engine->drawingData.facesSize);
+}
+
+void hxfEngineUpdateIconBuffer(HxfEngine* restrict engine) {
+    void* data;
+    HXF_TRY_VK(vkMapMemory(engine->device, engine->hostMemory, engine->drawingData.facesSrcTransferBufferOffset, engine->drawingData.iconInstanceSize, 0, &data));
+    memcpy(data, engine->drawingData.iconInstances, engine->drawingData.iconInstanceSize);
+    vkUnmapMemory(engine->device, engine->hostMemory);
+
+    transferBuffers(engine, engine->drawingData.facesSrcTransferBuffer, engine->drawingData.iconBuffer, 0, engine->drawingData.iconInstanceOffset - engine->drawingData.iconBufferOffset, engine->drawingData.iconInstanceSize);
 }
