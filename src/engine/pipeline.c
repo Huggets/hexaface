@@ -263,6 +263,15 @@ static void createDescriptors(HxfEngine* restrict engine) {
 }
 
 void createGraphicsPipeline(HxfEngine* restrict engine) {
+    // Create the pipeline cache
+
+    VkPipelineCacheCreateInfo pipelineCacheInfo = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO,
+        .initialDataSize = 0,
+        .pInitialData = NULL,
+    };
+    HXF_TRY_VK(vkCreatePipelineCache(engine->device, &pipelineCacheInfo, NULL, &engine->pipelineCache));
+    
     createRenderPass(engine);
     createDescriptors(engine);
 
@@ -540,7 +549,7 @@ void createGraphicsPipeline(HxfEngine* restrict engine) {
         }
     };
 
-    HXF_TRY_VK(vkCreateGraphicsPipelines(engine->device, NULL, 2, pipelineInfos, NULL, &engine->cubePipeline));
+    HXF_TRY_VK(vkCreateGraphicsPipelines(engine->device, engine->pipelineCache, 2, pipelineInfos, NULL, &engine->cubePipeline));
 
     vkDestroyShaderModule(engine->device, cubeFragmentModule, NULL);
     vkDestroyShaderModule(engine->device, iconFragmentModule, NULL);

@@ -193,6 +193,7 @@ typedef struct HxfEngine {
     size_t depthImageOffset; ///< Offset of the depth image inside the memory
     size_t depthImageSize; ///< Size of the depth image inside the memory
 
+    VkPipelineCache pipelineCache;
     VkPipeline cubePipeline;
     VkPipeline iconPipeline;
     VkPipelineLayout cubePipelineLayout;

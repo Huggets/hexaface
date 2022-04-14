@@ -1372,6 +1372,7 @@ void hxfDestroyEngine(HxfEngine* restrict engine) {
     vkDestroyPipelineLayout(engine->device, engine->cubePipelineLayout, NULL);
     vkDestroyPipelineLayout(engine->device, engine->iconPipelineLayout, NULL);
     vkDestroyRenderPass(engine->device, engine->renderPass, NULL);
+    vkDestroyPipelineCache(engine->device, engine->pipelineCache, NULL);
 
     vkDestroyDescriptorPool(engine->device, engine->cubeDescriptorPool, NULL);
     vkDestroyDescriptorSetLayout(engine->device, engine->cubeDescriptorSetLayout, NULL);
