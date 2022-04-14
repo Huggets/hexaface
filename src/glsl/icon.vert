@@ -22,5 +22,4 @@ void main() {
     gl_Position = vec4(pos, 0.0, 1.0);
 
     outTexelCoordinates = vec2(inTexelCoordinates.x, inTexelCoordinates.y + inTextureIndex * 16.0 / TEXTURE_HEIGHT);
-    // outTexelCoordinates = inTexelCoordinates;
 }

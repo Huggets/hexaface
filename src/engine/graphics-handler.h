@@ -70,12 +70,8 @@ typedef struct HxfMvpData {
  */
 typedef struct HxfDrawingData {
     VkBuffer hostBuffer; ///< Buffer on the host memory.
-    VkBuffer cubeBuffer; ///< Buffer that contains the cubes data
-    VkBuffer iconBuffer; ///< Buffer that contains the icons data
-    VkBuffer facesSrcTransferBuffer;
-    VkBuffer facesDstTransferBuffer;
-    VkBuffer pointedCubeSrcBuffer;
-    VkBuffer pointedCubeDstBuffer;
+    VkBuffer deviceBuffer; ///< Buffer on the host memory.
+    VkBuffer transferBuffer; ///< Buffer on the host memory that can transfer data to the device buffer.
 
     VkImage textureImage;
     VkImageView textureImageView;
@@ -111,11 +107,12 @@ typedef struct HxfDrawingData {
     VkDeviceSize cubesVertexIndicesSize;
     VkDeviceSize cubeInstancesOffset;
     VkDeviceSize cubeInstancesSize;
-    VkDeviceSize pointedCubeHostOffset;
-    VkDeviceSize pointedCubeDeviceOffset;
+    VkDeviceSize pointedCubeOffset;
     VkDeviceSize pointedCubeSize;
     VkDeviceSize iconVerticesOffset;
     VkDeviceSize iconVerticesSize;
+    VkDeviceSize iconVertexIndicesOffset;
+    VkDeviceSize iconVertexIndicesSize;
     VkDeviceSize iconInstancesOffset;
     VkDeviceSize iconInstancesSize;
     VkDeviceSize mvpOffset;
@@ -125,10 +122,8 @@ typedef struct HxfDrawingData {
     VkDeviceSize textureImageOffset;
     VkDeviceSize textureImageSize;
 
-    size_t hostBufferOffset;
-    size_t cubeBufferOffset;
-    size_t iconBufferOffset;
-    size_t facesSrcTransferBufferOffset;
+    VkDeviceSize hostBufferOffset;
+    VkDeviceSize deviceBufferOffset;
 } HxfDrawingData;
 
 /**
