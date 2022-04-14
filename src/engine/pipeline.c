@@ -7,32 +7,32 @@ STATIC FORWARD DECLARATION
 /**
  * @brief Create a VkShaderModule from a file.
  *
- * @param engine The HxfEngine that will own the shader module.
+ * @param engine The HxfGraphicsHandler that will own the shader module.
  * @param filename The name of the file that contains the shader code.
  *
  * @return The VkShaderModule.
  */
-static VkShaderModule createShaderModule(HxfEngine* restrict engine, const char* filename);
+static VkShaderModule createShaderModule(HxfGraphicsHandler* restrict engine, const char* filename);
 
 /**
  * @brief Create the render pass.
  *
- * @param engine The HxfEngine that will own it.
+ * @param engine The HxfGraphicsHandler that will own it.
  */
-static void createRenderPass(HxfEngine* restrict engine);
+static void createRenderPass(HxfGraphicsHandler* restrict engine);
 
 /**
  * @brief Create the descriptors.
  *
- * @param engine The HxfEngine that own them.
+ * @param engine The HxfGraphicsHandler that own them.
  */
-static void createDescriptors(HxfEngine* restrict engine);
+static void createDescriptors(HxfGraphicsHandler* restrict engine);
 
 /*
 IMPLEMENTATION
 */
 
-static VkShaderModule createShaderModule(HxfEngine* restrict engine, const char* filename) {
+static VkShaderModule createShaderModule(HxfGraphicsHandler* restrict engine, const char* filename) {
     VkShaderModule shaderModule;
     void* code;
     size_t codeSize;
@@ -54,7 +54,7 @@ static VkShaderModule createShaderModule(HxfEngine* restrict engine, const char*
     return shaderModule;
 }
 
-static void createRenderPass(HxfEngine* restrict engine) {
+static void createRenderPass(HxfGraphicsHandler* restrict engine) {
     VkAttachmentDescription attachmentDescriptions[] = {
         {
             .format = engine->swapchainImageFormat,
@@ -116,7 +116,7 @@ static void createRenderPass(HxfEngine* restrict engine) {
     HXF_TRY_VK(vkCreateRenderPass(engine->device, &renderPassInfo, NULL, &engine->renderPass));
 }
 
-static void createDescriptors(HxfEngine* restrict engine) {
+static void createDescriptors(HxfGraphicsHandler* restrict engine) {
     // Descriptor set layouts
 
     VkDescriptorSetLayoutBinding cubeLayoutBindings[] = {
@@ -219,8 +219,8 @@ static void createDescriptors(HxfEngine* restrict engine) {
     for (int i = 0; i != HXF_MAX_RENDERED_FRAMES; i++) {
         VkDescriptorBufferInfo uboBufferInfo = {
             .buffer = engine->drawingData.hostBuffer,
-            .offset = engine->drawingData.uboOffset,
-            .range = engine->drawingData.uboSize,
+            .offset = engine->drawingData.mvpOffset,
+            .range = engine->drawingData.mvpSize,
         };
         VkDescriptorImageInfo textureImageInfo = {
             .sampler = engine->drawingData.textureSampler,
@@ -262,7 +262,7 @@ static void createDescriptors(HxfEngine* restrict engine) {
     }
 }
 
-void createGraphicsPipeline(HxfEngine* restrict engine) {
+void createPipelines(HxfGraphicsHandler* restrict engine) {
     // Create the pipeline cache
 
     VkPipelineCacheCreateInfo pipelineCacheInfo = {
@@ -271,7 +271,7 @@ void createGraphicsPipeline(HxfEngine* restrict engine) {
         .pInitialData = NULL,
     };
     HXF_TRY_VK(vkCreatePipelineCache(engine->device, &pipelineCacheInfo, NULL, &engine->pipelineCache));
-    
+
     createRenderPass(engine);
     createDescriptors(engine);
 
@@ -338,12 +338,12 @@ void createGraphicsPipeline(HxfEngine* restrict engine) {
     VkVertexInputBindingDescription cubeBindingDescriptions[] = {
         {
             .binding = 0,
-            .stride = sizeof(HxfVertexData), // vertex pos + texel pos
+            .stride = sizeof(HxfCubeVertexData),
             .inputRate = VK_VERTEX_INPUT_RATE_VERTEX,
         },
         {
             .binding = 1,
-            .stride = sizeof(HxfCubeData),
+            .stride = sizeof(HxfCubeInstanceData),
             .inputRate = VK_VERTEX_INPUT_RATE_INSTANCE
         },
     };
@@ -352,25 +352,25 @@ void createGraphicsPipeline(HxfEngine* restrict engine) {
             .binding = 0,
             .location = 0,
             .format = VK_FORMAT_R32G32B32_SFLOAT,
-            .offset = offsetof(HxfVertexData, position),
+            .offset = offsetof(HxfCubeVertexData, position),
         },
         { // Texel coordinate
             .binding = 0,
             .location = 2,
             .format = VK_FORMAT_R32G32_SFLOAT,
-            .offset = offsetof(HxfVertexData, texelCoordinate),
+            .offset = offsetof(HxfCubeVertexData, texelCoordinate),
         },
         { // Cube position
             .binding = 1,
             .location = 1,
             .format = VK_FORMAT_R32G32B32_SFLOAT,
-            .offset = offsetof(HxfCubeData, position)
+            .offset = offsetof(HxfCubeInstanceData, position)
         },
         { // Texture index
             .binding = 1,
             .location = 3,
             .format = VK_FORMAT_R32_UINT,
-            .offset = offsetof(HxfCubeData, textureIndex)
+            .offset = offsetof(HxfCubeInstanceData, textureIndex)
         }
     };
     VkVertexInputBindingDescription iconBindingDescriptions[] = {
@@ -501,7 +501,7 @@ void createGraphicsPipeline(HxfEngine* restrict engine) {
     VkPushConstantRange iconPushConstantRanges[] = {
         {
             .offset = 0,
-            .size = sizeof(HxfIconPushData),
+            .size = sizeof(HxfIconPushConstantData),
             .stageFlags = VK_SHADER_STAGE_VERTEX_BIT
         }
     };

@@ -94,8 +94,8 @@ static void cKeyDown(void* param) {
     if (app->game.cubeSelector == HXF_TEXTURE_COUNT) {
         app->game.cubeSelector = HXF_TEXTURE_COUNT - 1;
     }
-    app->engine.drawingData.iconInstances[0].textureIndex = app->game.cubeSelector;
-    hxfEngineUpdateIconBuffer(&app->engine); // todo move this outside
+    app->graphics.drawingData.iconInstances[0].textureIndex = app->game.cubeSelector;
+    hxfGraphicsUpdateIconBuffer(&app->graphics); // todo move this outside
 }
 static void cKeyUp(void* param) {
     HxfAppData* app = (HxfAppData*)param;
@@ -200,8 +200,8 @@ static void wKeyDown(void* param) {
     if (app->game.cubeSelector == 0) {
         app->game.cubeSelector = 1;
     }
-    app->engine.drawingData.iconInstances[0].textureIndex = app->game.cubeSelector;
-    hxfEngineUpdateIconBuffer(&app->engine); // todo move this outside
+    app->graphics.drawingData.iconInstances[0].textureIndex = app->game.cubeSelector;
+    hxfGraphicsUpdateIconBuffer(&app->graphics); // todo move this outside
 }
 static void wKeyUp(void* param) {
     HxfAppData* app = (HxfAppData*)param;
@@ -217,8 +217,8 @@ static void zKeyUp(void* param) {
     app->keyboardState.z = 0;
 }
 
-void hxfInitInput(HxfAppData* app) {
-    // Initialize the default callbacks
+void hxfInputInit(HxfAppData* app) {
+    // Set a default callback for every keys.
 
     for (int i = 0; i != HXF_WINDOW_KEY_CALLBACK_COUNT; i++) {
         hxfSetKeyDownCallback(&app->mainWindow, i, emptyCallback, NULL);

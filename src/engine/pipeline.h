@@ -1,12 +1,10 @@
 #pragma once
 
-#include "vulkan.h"
+#include "graphics-handler.h"
 
 /**
- * @brief Create the graphics pipeline.
- * 
- * It includes the render pass
+ * @brief Create the graphics pipelines.
  *
- * @param engine A pointer to a HxfEngine that will own it.
+ * It includes the render pass.
  */
-void createGraphicsPipeline(HxfEngine* restrict engine);
+void createPipelines(HxfGraphicsHandler* restrict engine);

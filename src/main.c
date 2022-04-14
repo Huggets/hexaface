@@ -70,7 +70,7 @@ int main(int argc, char** argv) {
 
     handleParamaters(&param, argc, argv);
 
-    hxfStartApp(&param);
+    hxfAppStart(&param);
 
     return 0;
 }

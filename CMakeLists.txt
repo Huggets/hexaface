@@ -15,7 +15,7 @@ add_executable(
     src/camera.c
     src/world.c
     src/win32/window.c
-    src/engine/vulkan.c
+    src/engine/graphics-handler.c
     src/engine/pipeline.c
     src/engine/input-handler.c
     src/engine/game-handler.c

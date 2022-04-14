@@ -2,46 +2,29 @@
 
 #include "../world.h"
 #include "../camera.h"
-#include "vulkan.h"
+#include "graphics-handler.h"
 
 typedef struct HxfGameData {
     const char* const appdataDirectory;
-    /**
-     * @brief The graphics engine
-     */
-    HxfEngine* engine;
-    /**
-     * @brief The camera where the scene is viewed by the player.
-     */
-    HxfCamera camera;
-    /**
-     * @brief The world that is made of cubes.
-     */
-    HxfWorld world;
-    /**
-     * @brief The texture index of the cube that will be placed.
-     */
-    uint32_t cubeSelector;
+
+    HxfGraphicsHandler* graphics; ///< A reference to the graphics handler.
+    HxfCamera camera; ///< The player’s camera.
+    HxfWorld world; ///< The world that is made of cubes.
+    uint32_t cubeSelector; ///< The texture index of the cube that will be placed.
 } HxfGameData;
 
 /**
  * @brief Initialize the game.
- *
- * @param game A pointer to the game.
  */
-void hxfInitGame(HxfGameData* restrict game);
+void hxfGameInit(HxfGameData* restrict game);
 
 /**
  * @brief Stop the game.
- * 
- * @param game A pointer to the game.
  */
-void hxfStopGame(HxfGameData* restrict game);
+void hxfGameStop(HxfGameData* restrict game);
 
 /**
  * @brief Run a single game frame.
- *
- * @param game A pointer to the game.
  */
 void hxfGameFrame(HxfGameData* restrict game);
 

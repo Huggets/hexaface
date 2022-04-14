@@ -12,51 +12,22 @@
 #include "input.h"
 #include "camera.h"
 #include "world.h"
-#include "engine/vulkan.h"
+#include "engine/graphics-handler.h"
 #include "engine/game-handler.h"
 
 /**
  * @struct HxfAppData
- *
- * @brief The data of the application.
+ * @brief The application data.
  */
 typedef struct HxfAppData {
-    /**
-     * @brief The main window of the application.
-     */
-    HxfWindow mainWindow;
+    HxfWindow mainWindow; ///< The main window of the application
+    HxfKeyboardState keyboardState; ///< The keyboard state
+    HxfGameData game; ///< The game data
+    HxfGraphicsHandler graphics; ///< The graphics handler.
 
-    /**
-     * @brief The engine of the application that do all the computing.
-     *
-     * It includes the Vulkan engine, that draw the images.
-     */
-    HxfEngine engine;
-
-    /**
-     * @brief The state of the keyboard (if a key is down or not).
-     */
-    HxfKeyboardState keyboardState;
-
-    /**
-     * @brief Contains the game objects.
-     */
-    HxfGameData game;
-
-    /**
-     * @brief If set to 0, it indicates that the app should stop.
-     */
-    int run;
-
-    /**
-     * @brief The duration (in seconds) of the last frame.
-     */
-    float frameDuration;
-
-    /**
-     * @brief The path to the appdataDirectory.
-     */
-    char* appdataDirectory;
+    int run; ///< If set to 0, it indicates that the app should stop.
+    float frameDuration; ///< The duration (in seconds) of the last frame.
+    char* appdataDirectory; ///< The path to the appdataDirectory.
 } HxfAppData;
 
 /**
@@ -65,35 +36,15 @@ typedef struct HxfAppData {
  */
 typedef struct HxfAppParam {
 #if defined(HXF_WIN32)
-    /**
-     * @brief The HINSTANCE parameter that is given in the main function.
-     */
-    HINSTANCE hInstance;
-
-    /**
-     * @brief The nCmdShow parameter that is given in the main function.
-     */
-    int nCmdShow;
-
-    /**
-     * @brief The width of the window.
-     */
-    int windowWidth;
-    /**
-     * @brief The height of the window.
-     */
-    int windowHeight;
-
-    /**
-     * @brief The path to the appdata directory.
-     */
-    char* appDataDirectory;
+    HINSTANCE hInstance; ///< The HINSTANCE parameter that is given in the main function.
+    int nCmdShow; ///< The nCmdShow parameter that is given in the main function.
 #endif
+    int windowWidth; ///< The main window’s width.
+    int windowHeight; ///< The main window’s height.
+    char* appDataDirectory; ///< The path to the appdata directory.
 } HxfAppParam;
 
 /**
- * @brief Launch the application.
- *
- * @param param The paramater given to the application.
+ * @brief Launch the application with the given parameters.
  */
-void hxfStartApp(const HxfAppParam* restrict param);
+void hxfAppStart(const HxfAppParam* restrict param);

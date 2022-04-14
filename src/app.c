@@ -14,9 +14,12 @@
  */
 #define TEXTURE_HEIGHT 80.0F
 
+/**
+ * @brief The game loop.
+ */
 static void mainLoop(HxfAppData* restrict app) {
-    const clock_t startClock = clock();
-    clock_t currentClock = startClock;
+    const clock_t startClock = clock(); ///< The time when the loop started.
+    clock_t currentClock = startClock; ///< The time when the current frame started.
 
     while (app->run) {
         clock_t lastClock = currentClock; // Get the last clock
@@ -26,21 +29,34 @@ static void mainLoop(HxfAppData* restrict app) {
         hxfReadWindowMessages(&app->mainWindow);
         hxfHandleInput(app);
         hxfGameFrame(&app->game);
-        hxfEngineFrame(&app->engine);
+        hxfGraphicsFrame(&app->graphics);
 
         app->run = !app->mainWindow.shouldDestroyed;
     }
 }
 
-void hxfStartApp(const HxfAppParam* restrict param) {
+void hxfAppStart(const HxfAppParam* restrict param) {
     // Set the default app data
 
     HxfAppData app = {
-        .game.engine = &app.engine,
-        .engine.keyboardState = &app.keyboardState,
-        .engine.camera = &app.game.camera,
-        .engine.world = &app.game.world,
-        .engine.drawingData = {
+        .appdataDirectory = param->appDataDirectory,
+        .game.appdataDirectory = param->appDataDirectory,
+        .graphics.appdataDirectory = param->appDataDirectory,
+
+        .run = 1,
+
+        .game.graphics = &app.graphics,
+        .game.camera = {
+            .position = { 0.0f, 3.0f, -2.0f },
+            .up = { 0.0f, 1.0f, 0.0f },
+            .yaw = M_PI_2,
+            .pitch = 0.0f,
+        },
+
+        .graphics.keyboardState = &app.keyboardState,
+        .graphics.camera = &app.game.camera,
+        .graphics.world = &app.game.world,
+        .graphics.drawingData = {
             .cubesVertices = {
                 // top
                 { { 0.0f, 1.0f, 1.0f }, { 64.0f / TEXTURE_WIDTH, 16.0f / TEXTURE_HEIGHT } },
@@ -81,21 +97,21 @@ void hxfStartApp(const HxfAppParam* restrict param) {
                 16, 17, 18, 18, 19, 16,
                 20, 21, 22, 22, 23, 20
             },
-            .ubo = {
+            .mvp = {
                 .model = HXF_MAT4_IDENTITY,
                 .view = HXF_MAT4_IDENTITY,
                 .projection = hxfPerspectiveProjectionMatrix(0.01f, 128.0f, M_PI / 180.0f * 60.0f, (float)param->windowWidth / (float)param->windowHeight)
             },
             .iconVertices = {
-                { { -0.1f, -0.1f }, { 0.0f / TEXTURE_WIDTH, 0.0f / TEXTURE_HEIGHT } },
-                { { 0.1f, -0.1f }, { 16.0f / TEXTURE_WIDTH, 0.0f / TEXTURE_HEIGHT } },
-                { { 0.1f, 0.1f }, { 16.0f / TEXTURE_WIDTH, 16.0f / TEXTURE_HEIGHT } },
-                { { -0.1f, 0.1f }, { 0.0f / TEXTURE_WIDTH, 16.0f / TEXTURE_HEIGHT } },
+                { { -0.05f, -0.05f }, { 0.0f / TEXTURE_WIDTH, 0.0f / TEXTURE_HEIGHT } },
+                { { 0.05f, -0.05f }, { 16.0f / TEXTURE_WIDTH, 0.0f / TEXTURE_HEIGHT } },
+                { { 0.05f, 0.05f }, { 16.0f / TEXTURE_WIDTH, 16.0f / TEXTURE_HEIGHT } },
+                { { -0.05f, 0.05f }, { 0.0f / TEXTURE_WIDTH, 16.0f / TEXTURE_HEIGHT } },
             },
             .iconVertexIndices = {
                 0, 1, 2, 2, 3, 0
             },
-            .iconPush = {
+            .iconPushConstants = {
                 .windowWidth = param->windowWidth,
                 .windowHeight = param->windowHeight
             },
@@ -103,16 +119,6 @@ void hxfStartApp(const HxfAppParam* restrict param) {
                 { 1 }
             }
         },
-        .game.camera = {
-            .position = { 0.0f, 3.0f, -2.0f },
-            .up = { 0.0f, 1.0f, 0.0f },
-            .yaw = M_PI_2,
-            .pitch = 0.0f,
-        },
-        .run = 1,
-        .appdataDirectory = param->appDataDirectory,
-        .game.appdataDirectory = param->appDataDirectory,
-        .engine.appdataDirectory = param->appDataDirectory
     };
 
     // Create the main window
@@ -124,13 +130,13 @@ void hxfStartApp(const HxfAppParam* restrict param) {
         param->windowHeight
     };
     hxfCreateMainWindow(&windowParameter, &app.mainWindow);
-    app.engine.mainWindow = &app.mainWindow;
+    app.graphics.mainWindow = &app.mainWindow;
 
     // Initialization
 
-    hxfInitInput(&app);
-    hxfInitGame(&app.game);
-    hxfInitEngine(&app.engine);
+    hxfInputInit(&app);
+    hxfGameInit(&app.game);
+    hxfGraphicsInit(&app.graphics);
 
     // Run the main loop
 
@@ -138,8 +144,8 @@ void hxfStartApp(const HxfAppParam* restrict param) {
 
     // Stop the application
 
-    hxfStopEngine(&app.engine);
-    hxfStopGame(&app.game);
-    hxfDestroyEngine(&app.engine);
+    hxfGraphicsStop(&app.graphics);
+    hxfGameStop(&app.game);
+    hxfGraphicsDestroy(&app.graphics);
     hxfDestroyMainWindow(&app.mainWindow);
 }
