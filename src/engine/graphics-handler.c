@@ -977,7 +977,7 @@ static void allocateMemory(HxfGraphicsHandler* restrict graphics, const TextureI
     allocInfo.memoryTypeIndex = getMemoryTypeIndex(&graphics->physicalDeviceMemoryProperties, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
     HXF_TRY_VK(vkAllocateMemory(graphics->device, &allocInfo, NULL, &graphics->hostMemory));
 
-    allocInfo.allocationSize = deviceMemorySize; // todo this may not work, it should get the buffer and image memory requirements (not sure, TO VERIFY)
+    allocInfo.allocationSize = deviceMemorySize;
     allocInfo.memoryTypeIndex = getMemoryTypeIndex(&graphics->physicalDeviceMemoryProperties, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
     HXF_TRY_VK(vkAllocateMemory(graphics->device, &allocInfo, NULL, &graphics->deviceMemory));
 
