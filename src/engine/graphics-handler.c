@@ -510,7 +510,12 @@ static void recordDrawCommandBuffer(HxfGraphicsHandler* restrict graphics, uint3
 
     // The pointed cube
 
-    if (graphics->camera->isPointingToCube) {
+    const HxfIvec3 pointedCube = graphics->camera->nearPointedCube;
+    if (graphics->camera->isPointingToCube
+        && pointedCube.x >= 0 && pointedCube.x < HXF_WORLD_LENGTH
+        && pointedCube.y >= 0 && pointedCube.y < HXF_WORLD_LENGTH
+        && pointedCube.z >= 0 && pointedCube.z < HXF_WORLD_LENGTH
+        && graphics->world->cubes[pointedCube.x][pointedCube.y][pointedCube.z] == 0) {
         vkCmdDrawIndexed(graphics->drawCommandBuffers[currentFrameIndex], HXF_CUBE_VERTEX_INDEX_COUNT, 1, 0, 0, HXF_CUBE_INSTANCE_COUNT * 6);
     }
 
