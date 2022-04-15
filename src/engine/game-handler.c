@@ -1,6 +1,6 @@
 #include "game-handler.h"
 
-static const char WORLD_FILENAME[] = "/worlds/world"; ///< The path to the world file
+static const char WORLD_FILENAME[] = "/world"; ///< The path to the world file
 
 /**
  * @brief Append a new cube’s face that will be drawn.
