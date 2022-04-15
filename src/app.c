@@ -50,10 +50,7 @@ void hxfAppStart(const HxfAppParam* restrict param) {
 
         .game.graphics = &app.graphics,
         .game.camera = {
-            .position = { 0.0f, 3.0f, -2.0f },
-            .up = { 0.0f, 1.0f, 0.0f },
-            .yaw = M_PI_2,
-            .pitch = 0.0f,
+            .up = { 0.0f, 1.0f, 0.0f }
         },
 
         .graphics.keyboardState = &app.keyboardState,

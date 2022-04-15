@@ -79,7 +79,13 @@ void hxfGameInit(HxfGameData* restrict game) {
     strcpy(worldFilePath, game->appdataDirectory);
     strcat(worldFilePath, WORLD_FILENAME);
 
-    hxfWorldLoad(worldFilePath, &game->world);
+    HxfWorldSaveData savedData = {
+        .world = &game->world,
+        .cameraPosition = &game->camera.position,
+        .cameraYaw = &game->camera.yaw,
+        .cameraPitch = &game->camera.pitch
+    };
+    hxfWorldLoad(worldFilePath, &savedData);
 
     hxfFree(worldFilePath);
 
@@ -92,7 +98,14 @@ void hxfGameStop(HxfGameData* restrict game) {
     strcpy(worldFilePath, game->appdataDirectory);
     strcat(worldFilePath, WORLD_FILENAME);
 
-    hxfWorldSave(worldFilePath, &game->world);
+
+    HxfWorldSaveData savedData = {
+        .world = &game->world,
+        .cameraPosition = &game->camera.position,
+        .cameraYaw = &game->camera.yaw,
+        .cameraPitch = &game->camera.pitch
+    };
+    hxfWorldSave(worldFilePath, &savedData);
 
     hxfFree(worldFilePath);
 }
