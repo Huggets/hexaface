@@ -278,33 +278,46 @@ void createPipelines(HxfGraphicsHandler* restrict engine) {
     // Shader modules creation
 
     const char cubeVertex[] = "/shaders/vertexCube.spv";
-    const char cubeFragment[] = "/shaders/fragmentCube.spv";
     const char iconVertex[] = "/shaders/vertexIcon.spv";
+    const char pointerVertex[] = "/shaders/vertexPointer.spv";
+    const char cubeFragment[] = "/shaders/fragmentCube.spv";
     const char iconFragment[] = "/shaders/fragmentIcon.spv";
+    const char pointerFragment[] = "/shaders/fragmentPointer.spv";
 
     char* cubeVertexPath = hxfMalloc(sizeof(char) * (strlen(engine->appdataDirectory) + sizeof(cubeVertex)));
-    char* cubeFragmentPath = hxfMalloc(sizeof(char) * (strlen(engine->appdataDirectory) + sizeof(cubeFragment)));
     char* iconVertexPath = hxfMalloc(sizeof(char) * (strlen(engine->appdataDirectory) + sizeof(iconVertex)));
+    char* pointerVertexPath = hxfMalloc(sizeof(char) * (strlen(engine->appdataDirectory) + sizeof(pointerVertex)));
+    char* cubeFragmentPath = hxfMalloc(sizeof(char) * (strlen(engine->appdataDirectory) + sizeof(cubeFragment)));
     char* iconFragmentPath = hxfMalloc(sizeof(char) * (strlen(engine->appdataDirectory) + sizeof(iconFragment)));
+    char* pointerFragmentPath = hxfMalloc(sizeof(char) * (strlen(engine->appdataDirectory) + sizeof(pointerFragment)));
+
     strcpy(cubeVertexPath, engine->appdataDirectory);
-    strcpy(cubeFragmentPath, engine->appdataDirectory);
     strcpy(iconVertexPath, engine->appdataDirectory);
+    strcpy(pointerVertexPath, engine->appdataDirectory);
+    strcpy(cubeFragmentPath, engine->appdataDirectory);
     strcpy(iconFragmentPath, engine->appdataDirectory);
+    strcpy(pointerFragmentPath, engine->appdataDirectory);
 
     strcat(cubeVertexPath, cubeVertex);
-    strcat(cubeFragmentPath, cubeFragment);
     strcat(iconVertexPath, iconVertex);
+    strcat(pointerVertexPath, pointerVertex);
+    strcat(cubeFragmentPath, cubeFragment);
     strcat(iconFragmentPath, iconFragment);
+    strcat(pointerFragmentPath, pointerFragment);
 
     VkShaderModule cubeVertexModule = createShaderModule(engine, cubeVertexPath);
-    VkShaderModule cubeFragmentModule = createShaderModule(engine, cubeFragmentPath);
     VkShaderModule iconVertexModule = createShaderModule(engine, iconVertexPath);
+    VkShaderModule pointerVertexModule = createShaderModule(engine, pointerVertexPath);
+    VkShaderModule cubeFragmentModule = createShaderModule(engine, cubeFragmentPath);
     VkShaderModule iconFragmentModule = createShaderModule(engine, iconFragmentPath);
+    VkShaderModule pointerFragmentModule = createShaderModule(engine, pointerFragmentPath);
 
     hxfFree(cubeVertexPath);
-    hxfFree(cubeFragmentPath);
     hxfFree(iconVertexPath);
+    hxfFree(pointerVertexPath);
+    hxfFree(cubeFragmentPath);
     hxfFree(iconFragmentPath);
+    hxfFree(pointerFragmentPath);
 
     VkPipelineShaderStageCreateInfo cubeStages[] = {
         {
@@ -331,6 +344,20 @@ void createPipelines(HxfGraphicsHandler* restrict engine) {
             .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
             .stage = VK_SHADER_STAGE_FRAGMENT_BIT,
             .module = iconFragmentModule,
+            .pName = "main",
+        },
+    };
+    VkPipelineShaderStageCreateInfo pointerStages[] = {
+        {
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+            .stage = VK_SHADER_STAGE_VERTEX_BIT,
+            .module = pointerVertexModule,
+            .pName = "main",
+        },
+        {
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+            .stage = VK_SHADER_STAGE_FRAGMENT_BIT,
+            .module = pointerFragmentModule,
             .pName = "main",
         },
     };
@@ -408,23 +435,35 @@ void createPipelines(HxfGraphicsHandler* restrict engine) {
 
     VkPipelineVertexInputStateCreateInfo cubeInputInfo = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
-        .vertexBindingDescriptionCount = 2,
+        .vertexBindingDescriptionCount = sizeof(cubeBindingDescriptions) / sizeof(VkVertexInputBindingDescription),
         .pVertexBindingDescriptions = cubeBindingDescriptions,
-        .vertexAttributeDescriptionCount = 4,
+        .vertexAttributeDescriptionCount = sizeof(cubeAttributeDescriptions) / sizeof(VkVertexInputAttributeDescription),
         .pVertexAttributeDescriptions = cubeAttributeDescriptions,
     };
     VkPipelineVertexInputStateCreateInfo iconInputInfo = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
-        .vertexBindingDescriptionCount = 2,
+        .vertexBindingDescriptionCount = sizeof(iconBindingDescriptions) / sizeof(VkVertexInputBindingDescription),
         .pVertexBindingDescriptions = iconBindingDescriptions,
-        .vertexAttributeDescriptionCount = 3,
+        .vertexAttributeDescriptionCount = sizeof(iconAttributeDescriptions) / sizeof(VkVertexInputAttributeDescription),
         .pVertexAttributeDescriptions = iconAttributeDescriptions,
     };
+    VkPipelineVertexInputStateCreateInfo pointerInputInfo = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
+        .vertexBindingDescriptionCount = 0,
+        .pVertexBindingDescriptions = NULL,
+        .vertexAttributeDescriptionCount = 0,
+        .pVertexAttributeDescriptions = NULL,
+    };
 
-    VkPipelineInputAssemblyStateCreateInfo inputAssemblyInfo = {
+    VkPipelineInputAssemblyStateCreateInfo triangleListInputAssemblyInfo = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
         .topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
         .primitiveRestartEnable = VK_FALSE,
+    };
+    VkPipelineInputAssemblyStateCreateInfo triangleFanInputAssemblyInfo = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
+        .topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN,
+        .primitiveRestartEnable = VK_FALSE
     };
 
     VkViewport viewport = {
@@ -489,7 +528,7 @@ void createPipelines(HxfGraphicsHandler* restrict engine) {
     };
     VkPipelineLayoutCreateInfo cubePipelineLayoutInfo = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-        .setLayoutCount = 1,
+        .setLayoutCount = sizeof(cubeSetLayouts) / sizeof(VkDescriptorSetLayout),
         .pSetLayouts = cubeSetLayouts,
         .pushConstantRangeCount = 0,
         .pPushConstantRanges = NULL
@@ -507,14 +546,30 @@ void createPipelines(HxfGraphicsHandler* restrict engine) {
     };
     VkPipelineLayoutCreateInfo iconPipelineLayoutInfo = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-        .setLayoutCount = 1,
+        .setLayoutCount = sizeof(iconSetLayouts) / sizeof(VkDescriptorSetLayout),
         .pSetLayouts = iconSetLayouts,
-        .pushConstantRangeCount = 1,
+        .pushConstantRangeCount = sizeof(iconPushConstantRanges) / sizeof(VkPushConstantRange),
         .pPushConstantRanges = iconPushConstantRanges
+    };
+
+    VkPushConstantRange pointerPushConstantRanges[] = {
+        {
+            .offset = 0,
+            .size = sizeof(HxfPointerPushConstantData),
+            .stageFlags = VK_SHADER_STAGE_VERTEX_BIT
+        }
+    };
+    VkPipelineLayoutCreateInfo pointerPipelineLayoutInfo = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+        .setLayoutCount = 0,
+        .pSetLayouts = NULL,
+        .pushConstantRangeCount = sizeof(pointerPushConstantRanges) / sizeof(VkPushConstantRange),
+        .pPushConstantRanges = pointerPushConstantRanges
     };
 
     HXF_TRY_VK(vkCreatePipelineLayout(engine->device, &cubePipelineLayoutInfo, NULL, &engine->cubePipelineLayout));
     HXF_TRY_VK(vkCreatePipelineLayout(engine->device, &iconPipelineLayoutInfo, NULL, &engine->iconPipelineLayout));
+    HXF_TRY_VK(vkCreatePipelineLayout(engine->device, &pointerPipelineLayoutInfo, NULL, &engine->pointerPipelineLayout));
 
     // Create the graphics pipeline
     VkGraphicsPipelineCreateInfo pipelineInfos[] = {
@@ -523,7 +578,7 @@ void createPipelines(HxfGraphicsHandler* restrict engine) {
             .stageCount = 2,
             .pStages = cubeStages,
             .pVertexInputState = &cubeInputInfo,
-            .pInputAssemblyState = &inputAssemblyInfo,
+            .pInputAssemblyState = &triangleListInputAssemblyInfo,
             .pViewportState = &viewportInfo,
             .pRasterizationState = &rasterizationInfo,
             .pMultisampleState = &multisampleInfo,
@@ -537,7 +592,7 @@ void createPipelines(HxfGraphicsHandler* restrict engine) {
             .stageCount = 2,
             .pStages = iconStages,
             .pVertexInputState = &iconInputInfo,
-            .pInputAssemblyState = &inputAssemblyInfo,
+            .pInputAssemblyState = &triangleListInputAssemblyInfo,
             .pViewportState = &viewportInfo,
             .pRasterizationState = &rasterizationInfo,
             .pDepthStencilState = &depthStencilInfo,
@@ -546,13 +601,30 @@ void createPipelines(HxfGraphicsHandler* restrict engine) {
             .layout = engine->iconPipelineLayout,
             .renderPass = engine->renderPass,
             .basePipelineIndex = 0
+        },
+        { // Pointer pipeline
+            .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
+            .stageCount = 2,
+            .pStages = pointerStages,
+            .pVertexInputState = &pointerInputInfo,
+            .pInputAssemblyState = &triangleFanInputAssemblyInfo,
+            .pViewportState = &viewportInfo,
+            .pRasterizationState = &rasterizationInfo,
+            .pDepthStencilState = &depthStencilInfo,
+            .pMultisampleState = &multisampleInfo,
+            .pColorBlendState = &colorBlendInfo,
+            .layout = engine->pointerPipelineLayout,
+            .renderPass = engine->renderPass,
+            .basePipelineIndex = 0
         }
     };
 
-    HXF_TRY_VK(vkCreateGraphicsPipelines(engine->device, engine->pipelineCache, 2, pipelineInfos, NULL, &engine->cubePipeline));
+    HXF_TRY_VK(vkCreateGraphicsPipelines(engine->device, engine->pipelineCache, sizeof(pipelineInfos) / sizeof(VkGraphicsPipelineCreateInfo), pipelineInfos, NULL, &engine->cubePipeline));
 
     vkDestroyShaderModule(engine->device, cubeFragmentModule, NULL);
     vkDestroyShaderModule(engine->device, iconFragmentModule, NULL);
+    vkDestroyShaderModule(engine->device, pointerFragmentModule, NULL);
     vkDestroyShaderModule(engine->device, cubeVertexModule, NULL);
     vkDestroyShaderModule(engine->device, iconVertexModule, NULL);
+    vkDestroyShaderModule(engine->device, pointerVertexModule, NULL);
 }

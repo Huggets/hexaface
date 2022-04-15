@@ -22,6 +22,8 @@
 #define HXF_ICON_VERTEX_INDEX_COUNT 6
 #define HXF_ICON_INSTANCE_DATA_COUNT 1
 
+#define HXF_POINTER_VERTEX_COUNT 12
+
 #define HXF_TEXTURE_COUNT 5
 
 #define HXF_FACES_TOP 0
@@ -56,6 +58,11 @@ typedef struct HxfIconPushConstantData {
     alignas(4) uint32_t windowHeight;
 } HxfIconPushConstantData;
 
+typedef struct HxfPointerPushConstantData {
+    alignas(4) uint32_t windowWidth;
+    alignas(4) uint32_t windowHeight;
+} HxfPointerPushConstantData;
+
 typedef struct HxfMvpData {
     alignas(16) HxfMat4 model;
     alignas(16) HxfMat4 view;
@@ -87,7 +94,6 @@ typedef struct HxfDrawingData {
 
     HxfIconVertexData iconVertices[HXF_ICON_VERTEX_DATA_COUNT];
     HxfIconInstanceData iconInstances[HXF_ICON_INSTANCE_DATA_COUNT];
-    HxfIconPushConstantData iconPushConstants;
     uint32_t iconVertexIndices[HXF_ICON_VERTEX_INDEX_COUNT];
 
     HxfMvpData mvp; ///< The model-view-projection matrices
@@ -124,6 +130,7 @@ typedef struct HxfDrawingData {
 
     VkDeviceSize hostBufferOffset;
     VkDeviceSize deviceBufferOffset;
+    VkDeviceSize transferBufferOffset;
 } HxfDrawingData;
 
 /**
@@ -160,8 +167,10 @@ typedef struct HxfGraphicsHandler {
     VkPipelineCache pipelineCache; ///< The cache for the pipelines.
     VkPipeline cubePipeline; ///< The pipeline that draw the cubes.
     VkPipeline iconPipeline; ///< The pipeline that draw the icons.
+    VkPipeline pointerPipeline; ///< The pipeline that draw the pointer.
     VkPipelineLayout cubePipelineLayout; ///< The pipeline layout of the cube pipeline.
     VkPipelineLayout iconPipelineLayout; ///< The pipeline layout of the icon pipeline.
+    VkPipelineLayout pointerPipelineLayout; ///< The pipeline layout of the pointer pipeline.
     VkRenderPass renderPass; ///< The render pass.
     VkDescriptorPool cubeDescriptorPool; ///< The descriptor pool for the cubes descriptors.
     VkDescriptorPool iconDescriptorPool; ///< The descriptor pool for the icons descriptors.

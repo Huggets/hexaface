@@ -36,6 +36,9 @@ static void mainLoop(HxfAppData* restrict app) {
 }
 
 void hxfAppStart(const HxfAppParam* restrict param) {
+    const int halfWindowHeight = param->windowHeight / 2;
+    const int selectorCubeSize = 100.0f;
+
     // Set the default app data
 
     HxfAppData app = {
@@ -103,17 +106,13 @@ void hxfAppStart(const HxfAppParam* restrict param) {
                 .projection = hxfPerspectiveProjectionMatrix(0.01f, 128.0f, M_PI / 180.0f * 60.0f, (float)param->windowWidth / (float)param->windowHeight)
             },
             .iconVertices = {
-                { { -0.05f, -0.05f }, { 0.0f / TEXTURE_WIDTH, 0.0f / TEXTURE_HEIGHT } },
-                { { 0.05f, -0.05f }, { 16.0f / TEXTURE_WIDTH, 0.0f / TEXTURE_HEIGHT } },
-                { { 0.05f, 0.05f }, { 16.0f / TEXTURE_WIDTH, 16.0f / TEXTURE_HEIGHT } },
-                { { -0.05f, 0.05f }, { 0.0f / TEXTURE_WIDTH, 16.0f / TEXTURE_HEIGHT } },
+                { { 0.0f - selectorCubeSize / 2, halfWindowHeight - selectorCubeSize }, { 0.0f / TEXTURE_WIDTH, 0.0f / TEXTURE_HEIGHT } },
+                { { selectorCubeSize - selectorCubeSize / 2, halfWindowHeight - selectorCubeSize }, { 16.0f / TEXTURE_WIDTH, 0.0f / TEXTURE_HEIGHT } },
+                { { selectorCubeSize - selectorCubeSize / 2, halfWindowHeight }, { 16.0f / TEXTURE_WIDTH, 16.0f / TEXTURE_HEIGHT } },
+                { { 0.0f - selectorCubeSize / 2, halfWindowHeight }, { 0.0f / TEXTURE_WIDTH, 16.0f / TEXTURE_HEIGHT } },
             },
             .iconVertexIndices = {
                 0, 1, 2, 2, 3, 0
-            },
-            .iconPushConstants = {
-                .windowWidth = param->windowWidth,
-                .windowHeight = param->windowHeight
             },
             .iconInstances = {
                 { 1 }

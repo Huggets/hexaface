@@ -529,6 +529,8 @@ static void recordDrawCommandBuffer(HxfGraphicsHandler* restrict graphics, uint3
     vkCmdDrawIndexed(graphics->drawCommandBuffers[currentFrameIndex], 6, graphics->drawingData.faceRightCount, 24, 0, HXF_CUBE_INSTANCE_COUNT * 4);
     vkCmdDrawIndexed(graphics->drawCommandBuffers[currentFrameIndex], 6, graphics->drawingData.faceLeftCount, 30, 0, HXF_CUBE_INSTANCE_COUNT * 5);
 
+    // The cube selector icon
+
     vkCmdBindPipeline(graphics->drawCommandBuffers[currentFrameIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, graphics->iconPipeline);
     vkCmdBindDescriptorSets(
         graphics->drawCommandBuffers[currentFrameIndex],
@@ -541,8 +543,22 @@ static void recordDrawCommandBuffer(HxfGraphicsHandler* restrict graphics, uint3
     offsets[1] = graphics->drawingData.iconInstancesOffset - graphics->drawingData.deviceBufferOffset;
     vkCmdBindVertexBuffers(graphics->drawCommandBuffers[currentFrameIndex], 0, 2, boundBuffers, offsets);
     vkCmdBindIndexBuffer(graphics->commandBuffers[currentFrameIndex], graphics->drawingData.deviceBuffer, graphics->drawingData.iconVertexIndicesOffset - graphics->drawingData.deviceBufferOffset, VK_INDEX_TYPE_UINT32);
-    vkCmdPushConstants(graphics->drawCommandBuffers[currentFrameIndex], graphics->iconPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(HxfIconPushConstantData), &graphics->drawingData.iconPushConstants);
+    HxfIconPushConstantData iconPushConstant = {
+        graphics->mainWindow->width,
+        graphics->mainWindow->height
+    };
+    vkCmdPushConstants(graphics->drawCommandBuffers[currentFrameIndex], graphics->iconPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(HxfIconPushConstantData), &iconPushConstant);
     vkCmdDrawIndexed(graphics->drawCommandBuffers[currentFrameIndex], HXF_ICON_VERTEX_INDEX_COUNT, 1, 0, 0, 0);
+
+    // The pointer
+
+    vkCmdBindPipeline(graphics->drawCommandBuffers[currentFrameIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, graphics->pointerPipeline);
+    HxfPointerPushConstantData HxfPointerPushConstantData = {
+        graphics->mainWindow->width,
+        graphics->mainWindow->height
+    };
+    vkCmdPushConstants(graphics->drawCommandBuffers[currentFrameIndex], graphics->pointerPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(HxfPointerPushConstantData), &iconPushConstant);
+    vkCmdDraw(graphics->drawCommandBuffers[currentFrameIndex], HXF_POINTER_VERTEX_COUNT, 1, 0, 0);
 
     vkCmdEndRenderPass(graphics->drawCommandBuffers[currentFrameIndex]);
 
@@ -840,7 +856,6 @@ static void allocateMemory(HxfGraphicsHandler* restrict graphics, const TextureI
     HxfDrawingData* const restrict drawingData = &graphics->drawingData; // Reference to the drawing data
     const VkDeviceSize textureImageSize = textureInfo->width * textureInfo->height * textureInfo->channels;
     VkDeviceSize deviceBufferSizeRequired;
-    VkDeviceSize transferBufferSizeRequired;
     VkDeviceSize deviceBufferDataSize;
     VkDeviceSize hostMemorySize;   ///< The total size of the host memory
     VkDeviceSize deviceMemorySize; //< The total size of the device memory
@@ -963,14 +978,17 @@ static void allocateMemory(HxfGraphicsHandler* restrict graphics, const TextureI
 
 // --- End of host buffer data --- //
 
-    hostMemorySize = memoryOffset;
-
     // Transfer buffer
+    drawingData->transferBufferOffset = memoryOffset;
+
     bufferInfo.size = deviceBufferSizeRequired; // We need to copy from the device buffer
     bufferInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
     HXF_TRY_VK(vkCreateBuffer(graphics->device, &bufferInfo, NULL, &drawingData->transferBuffer));
     vkGetBufferMemoryRequirements(graphics->device, drawingData->transferBuffer, &memoryRequirements);
-    transferBufferSizeRequired = memoryRequirements.size;
+    alignBuffer(&memoryRequirements, &drawingData->transferBufferOffset, NULL, 0);
+    memoryOffset = drawingData->transferBufferOffset + memoryRequirements.size;
+
+    hostMemorySize = memoryOffset;
 
     // Allocate the memories
 
@@ -978,7 +996,7 @@ static void allocateMemory(HxfGraphicsHandler* restrict graphics, const TextureI
         .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO
     };
 
-    allocInfo.allocationSize = max(hostMemorySize, transferBufferSizeRequired); // We need to transfer to the device as well
+    allocInfo.allocationSize = hostMemorySize;
     allocInfo.memoryTypeIndex = getMemoryTypeIndex(&graphics->physicalDeviceMemoryProperties, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
     HXF_TRY_VK(vkAllocateMemory(graphics->device, &allocInfo, NULL, &graphics->hostMemory));
 
@@ -990,14 +1008,14 @@ static void allocateMemory(HxfGraphicsHandler* restrict graphics, const TextureI
 
     vkBindBufferMemory(graphics->device, drawingData->hostBuffer, graphics->hostMemory, drawingData->hostBufferOffset);
     vkBindBufferMemory(graphics->device, drawingData->deviceBuffer, graphics->deviceMemory, drawingData->deviceBufferOffset);
-    vkBindBufferMemory(graphics->device, drawingData->transferBuffer, graphics->hostMemory, 0);
+    vkBindBufferMemory(graphics->device, drawingData->transferBuffer, graphics->hostMemory, drawingData->transferBufferOffset);
     vkBindImageMemory(graphics->device, graphics->drawingData.depthImage, graphics->deviceMemory, graphics->drawingData.depthImageOffset);
     vkBindImageMemory(graphics->device, drawingData->textureImage, graphics->deviceMemory, drawingData->textureImageOffset);
 
     // Transfer the device buffers data, from the host to the device memory
 
     void* data;
-    HXF_TRY_VK(vkMapMemory(graphics->device, graphics->hostMemory, 0, transferBufferSizeRequired, 0, &data));
+    HXF_TRY_VK(vkMapMemory(graphics->device, graphics->hostMemory, drawingData->transferBufferOffset, deviceBufferDataSize, 0, &data));
     data -= drawingData->deviceBufferOffset; // Start from 0 instead of using the device memory offset
     memcpy(data + drawingData->cubesVerticesOffset, drawingData->cubesVertices, drawingData->cubesVerticesSize);
     memcpy(data + drawingData->cubesVertexIndicesOffset, drawingData->cubesVertexIndices, drawingData->cubesVertexIndicesSize);
@@ -1005,7 +1023,7 @@ static void allocateMemory(HxfGraphicsHandler* restrict graphics, const TextureI
     memcpy(data + drawingData->iconVerticesOffset, drawingData->iconVertices, drawingData->iconVerticesSize);
     memcpy(data + drawingData->iconVertexIndicesOffset, drawingData->iconVertexIndices, drawingData->iconVertexIndicesSize);
     memcpy(data + drawingData->iconInstancesOffset, drawingData->iconInstances, drawingData->iconInstancesSize);
-    vkUnmapMemory(graphics->device, graphics->hostMemory); // todo removing unmapping, and use the same mapping to transfer the vertex/instance data and the texture image.
+    vkUnmapMemory(graphics->device, graphics->hostMemory);
 
     transferBuffers(graphics, drawingData->transferBuffer, drawingData->deviceBuffer, 0, 0, deviceBufferDataSize);
 
@@ -1015,7 +1033,7 @@ static void allocateMemory(HxfGraphicsHandler* restrict graphics, const TextureI
 
     // Write the texture in memory
 
-    HXF_TRY_VK(vkMapMemory(graphics->device, graphics->hostMemory, 0, textureImageSize, 0, &data));
+    HXF_TRY_VK(vkMapMemory(graphics->device, graphics->hostMemory, drawingData->transferBufferOffset, textureImageSize, 0, &data));
     memcpy(data, textureInfo->pixels, textureImageSize);
     vkUnmapMemory(graphics->device, graphics->hostMemory);
 
@@ -1219,21 +1237,14 @@ static void updateMvpBuffer(HxfGraphicsHandler* restrict graphics) {
     graphics->drawingData.mvp.view = hxfViewMatrix(&graphics->camera->position, &graphics->camera->direction, &graphics->camera->up);
 
     void* data;
-    HXF_TRY_VK(vkMapMemory(
-        graphics->device,
-        graphics->hostMemory,
-        graphics->drawingData.mvpOffset,
-        graphics->drawingData.mvpSize,
-        0,
-        &data
-    ));
+    HXF_TRY_VK(vkMapMemory(graphics->device, graphics->hostMemory, graphics->drawingData.mvpOffset, graphics->drawingData.mvpSize, 0, &data));
     memcpy(data, &graphics->drawingData.mvp, graphics->drawingData.mvpSize);
     vkUnmapMemory(graphics->device, graphics->hostMemory);
 }
 
 static void updatePointedCubeBuffer(HxfGraphicsHandler* restrict graphics) {
     void* data;
-    HXF_TRY_VK(vkMapMemory(graphics->device, graphics->hostMemory, 0, graphics->drawingData.pointedCubeSize, 0, &data));
+    HXF_TRY_VK(vkMapMemory(graphics->device, graphics->hostMemory, graphics->drawingData.transferBufferOffset, graphics->drawingData.pointedCubeSize, 0, &data));
     const HxfCubeInstanceData pointedCube = {
         {
             (float)graphics->camera->nearPointedCube.x,
@@ -1246,6 +1257,24 @@ static void updatePointedCubeBuffer(HxfGraphicsHandler* restrict graphics) {
     vkUnmapMemory(graphics->device, graphics->hostMemory);
 
     transferBuffers(graphics, graphics->drawingData.transferBuffer, graphics->drawingData.deviceBuffer, 0, graphics->drawingData.pointedCubeOffset - graphics->drawingData.deviceBufferOffset, sizeof(pointedCube));
+}
+
+void hxfGraphicsUpdateCubeBuffer(HxfGraphicsHandler* restrict graphics) {
+    void* data;
+    HXF_TRY_VK(vkMapMemory(graphics->device, graphics->hostMemory, graphics->drawingData.transferBufferOffset, graphics->drawingData.cubeInstancesSize, 0, &data));
+    memcpy(data, graphics->drawingData.cubeInstances, graphics->drawingData.cubeInstancesSize);
+    vkUnmapMemory(graphics->device, graphics->hostMemory);
+
+    transferBuffers(graphics, graphics->drawingData.transferBuffer, graphics->drawingData.deviceBuffer, 0, graphics->drawingData.cubeInstancesOffset - graphics->drawingData.deviceBufferOffset, graphics->drawingData.cubeInstancesSize);
+}
+
+void hxfGraphicsUpdateIconBuffer(HxfGraphicsHandler* restrict graphics) {
+    void* data;
+    HXF_TRY_VK(vkMapMemory(graphics->device, graphics->hostMemory, graphics->drawingData.transferBufferOffset, graphics->drawingData.iconInstancesSize, 0, &data));
+    memcpy(data, graphics->drawingData.iconInstances, graphics->drawingData.iconInstancesSize);
+    vkUnmapMemory(graphics->device, graphics->hostMemory);
+
+    transferBuffers(graphics, graphics->drawingData.transferBuffer, graphics->drawingData.deviceBuffer, 0, graphics->drawingData.iconInstancesOffset - graphics->drawingData.deviceBufferOffset, graphics->drawingData.iconInstancesSize);
 }
 
 void hxfGraphicsInit(HxfGraphicsHandler* restrict graphics) {
@@ -1272,8 +1301,10 @@ void hxfGraphicsDestroy(HxfGraphicsHandler* restrict graphics) {
 
     vkDestroyPipeline(graphics->device, graphics->cubePipeline, NULL);
     vkDestroyPipeline(graphics->device, graphics->iconPipeline, NULL);
+    vkDestroyPipeline(graphics->device, graphics->pointerPipeline, NULL);
     vkDestroyPipelineLayout(graphics->device, graphics->cubePipelineLayout, NULL);
     vkDestroyPipelineLayout(graphics->device, graphics->iconPipelineLayout, NULL);
+    vkDestroyPipelineLayout(graphics->device, graphics->pointerPipelineLayout, NULL);
     vkDestroyRenderPass(graphics->device, graphics->renderPass, NULL);
     vkDestroyPipelineCache(graphics->device, graphics->pipelineCache, NULL);
 
@@ -1364,22 +1395,4 @@ void hxfGraphicsFrame(HxfGraphicsHandler* restrict graphics) {
 
 void hxfGraphicsStop(HxfGraphicsHandler* restrict graphics) {
     vkDeviceWaitIdle(graphics->device);
-}
-
-void hxfGraphicsUpdateCubeBuffer(HxfGraphicsHandler* restrict graphics) {
-    void* data;
-    HXF_TRY_VK(vkMapMemory(graphics->device, graphics->hostMemory, 0, graphics->drawingData.cubeInstancesSize, 0, &data));
-    memcpy(data, graphics->drawingData.cubeInstances, graphics->drawingData.cubeInstancesSize);
-    vkUnmapMemory(graphics->device, graphics->hostMemory);
-
-    transferBuffers(graphics, graphics->drawingData.transferBuffer, graphics->drawingData.deviceBuffer, 0, graphics->drawingData.cubeInstancesOffset - graphics->drawingData.deviceBufferOffset, graphics->drawingData.cubeInstancesSize);
-}
-
-void hxfGraphicsUpdateIconBuffer(HxfGraphicsHandler* restrict graphics) {
-    void* data;
-    HXF_TRY_VK(vkMapMemory(graphics->device, graphics->hostMemory, 0, graphics->drawingData.iconInstancesSize, 0, &data));
-    memcpy(data, graphics->drawingData.iconInstances, graphics->drawingData.iconInstancesSize);
-    vkUnmapMemory(graphics->device, graphics->hostMemory);
-
-    transferBuffers(graphics, graphics->drawingData.transferBuffer, graphics->drawingData.deviceBuffer, 0, graphics->drawingData.iconInstancesOffset - graphics->drawingData.deviceBufferOffset, graphics->drawingData.iconInstancesSize);
 }

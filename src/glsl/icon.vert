@@ -17,8 +17,10 @@ layout(push_constant) uniform Push {
 layout(location = 0) out vec2 outTexelCoordinates;
 
 void main() {
-    float ratio = float(push.windowWidth) / float(push.windowHeight);
-    vec2 pos = vec2(inPosition.x / ratio, inPosition.y);
+    const vec2 pos = vec2(
+        inPosition.x / (push.windowWidth / 2.0),
+        inPosition.y / (push.windowHeight / 2.0)
+    );
     gl_Position = vec4(pos, 0.0, 1.0);
 
     outTexelCoordinates = vec2(inTexelCoordinates.x, inTexelCoordinates.y + inTextureIndex * 16.0 / TEXTURE_HEIGHT);

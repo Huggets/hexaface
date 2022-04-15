@@ -95,7 +95,7 @@ static void cKeyDown(void* param) {
         app->game.cubeSelector = HXF_TEXTURE_COUNT - 1;
     }
     app->graphics.drawingData.iconInstances[0].textureIndex = app->game.cubeSelector;
-    hxfGraphicsUpdateIconBuffer(&app->graphics); // todo move this outside
+    hxfGraphicsUpdateIconBuffer(&app->graphics);
 }
 static void cKeyUp(void* param) {
     HxfAppData* app = (HxfAppData*)param;
@@ -201,7 +201,7 @@ static void wKeyDown(void* param) {
         app->game.cubeSelector = 1;
     }
     app->graphics.drawingData.iconInstances[0].textureIndex = app->game.cubeSelector;
-    hxfGraphicsUpdateIconBuffer(&app->graphics); // todo move this outside
+    hxfGraphicsUpdateIconBuffer(&app->graphics);
 }
 static void wKeyUp(void* param) {
     HxfAppData* app = (HxfAppData*)param;

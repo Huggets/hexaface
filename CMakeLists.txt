@@ -29,8 +29,10 @@ add_custom_command(
     TARGET shaders PRE_BUILD
     COMMAND glslc ARGS -o ${CMAKE_HOME_DIRECTORY}/appdata/shaders/vertexCube.spv ${CMAKE_SOURCE_DIR}/src/glsl/cube.vert
     COMMAND glslc ARGS -o ${CMAKE_HOME_DIRECTORY}/appdata/shaders/vertexIcon.spv ${CMAKE_SOURCE_DIR}/src/glsl/icon.vert
+    COMMAND glslc ARGS -o ${CMAKE_HOME_DIRECTORY}/appdata/shaders/vertexPointer.spv ${CMAKE_SOURCE_DIR}/src/glsl/pointer.vert
     COMMAND glslc ARGS -o ${CMAKE_HOME_DIRECTORY}/appdata/shaders/fragmentCube.spv ${CMAKE_SOURCE_DIR}/src/glsl/cube.frag
     COMMAND glslc ARGS -o ${CMAKE_HOME_DIRECTORY}/appdata/shaders/fragmentIcon.spv ${CMAKE_SOURCE_DIR}/src/glsl/icon.frag
+    COMMAND glslc ARGS -o ${CMAKE_HOME_DIRECTORY}/appdata/shaders/fragmentPointer.spv ${CMAKE_SOURCE_DIR}/src/glsl/pointer.frag
 )
 
 ### Variable handling ###
