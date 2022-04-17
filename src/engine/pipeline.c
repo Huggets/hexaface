@@ -105,7 +105,7 @@ static void createRenderPass(HxfGraphicsHandler* restrict engine) {
 
     VkRenderPassCreateInfo renderPassInfo = {
         .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
-        .attachmentCount = 2,
+        .attachmentCount = sizeof(attachmentDescriptions) / sizeof(VkAttachmentDescription),
         .pAttachments = attachmentDescriptions,
         .subpassCount = 1,
         .pSubpasses = &subpassDescription,
@@ -143,12 +143,12 @@ static void createDescriptors(HxfGraphicsHandler* restrict engine) {
     };
     VkDescriptorSetLayoutCreateInfo cubeLayoutInfo = {
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-        .bindingCount = 2,
+        .bindingCount = sizeof(cubeLayoutBindings) / sizeof(VkDescriptorSetLayoutBinding),
         .pBindings = cubeLayoutBindings,
     };
     VkDescriptorSetLayoutCreateInfo iconLayoutInfo = {
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-        .bindingCount = 1,
+        .bindingCount = sizeof(iconLayoutBindings) / sizeof(VkDescriptorSetLayoutBinding),
         .pBindings = iconLayoutBindings
     };
     HXF_TRY_VK(vkCreateDescriptorSetLayout(engine->device, &cubeLayoutInfo, NULL, &engine->cubeDescriptorSetLayout));
@@ -176,13 +176,13 @@ static void createDescriptors(HxfGraphicsHandler* restrict engine) {
     VkDescriptorPoolCreateInfo cubeDescriptorPoolInfo = {
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
         .maxSets = HXF_MAX_RENDERED_FRAMES,
-        .poolSizeCount = 2,
+        .poolSizeCount = sizeof(cubeDescriptorPoolSizes) / sizeof(VkDescriptorPoolSize),
         .pPoolSizes = cubeDescriptorPoolSizes,
     };
     VkDescriptorPoolCreateInfo iconDescriptorPoolInfo = {
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
         .maxSets = HXF_MAX_RENDERED_FRAMES,
-        .poolSizeCount = 1,
+        .poolSizeCount = sizeof(iconDescriptorPoolSizes) / sizeof(VkDescriptorPoolSize),
         .pPoolSizes = iconDescriptorPoolSizes,
     };
     HXF_TRY_VK(vkCreateDescriptorPool(engine->device, &cubeDescriptorPoolInfo, NULL, &engine->cubeDescriptorPool));
@@ -258,7 +258,7 @@ static void createDescriptors(HxfGraphicsHandler* restrict engine) {
                 .pImageInfo = &textureImageInfo
             }
         };
-        vkUpdateDescriptorSets(engine->device, 3, cubeWriteDescriptorSets, 0, NULL);
+        vkUpdateDescriptorSets(engine->device, sizeof(cubeWriteDescriptorSets) / sizeof(VkWriteDescriptorSet), cubeWriteDescriptorSets, 0, NULL);
     }
 }
 
@@ -512,13 +512,15 @@ void createPipelines(HxfGraphicsHandler* restrict engine) {
         .depthCompareOp = VK_COMPARE_OP_LESS,
     };
 
-    VkPipelineColorBlendAttachmentState colorBlendAttachment = {
-        .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT,
+    VkPipelineColorBlendAttachmentState colorBlendAttachments[] = {
+        {
+            .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT,
+        }
     };
     VkPipelineColorBlendStateCreateInfo colorBlendInfo = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
-        .attachmentCount = 1,
-        .pAttachments = &colorBlendAttachment,
+        .attachmentCount = sizeof(colorBlendAttachments) / sizeof(VkPipelineColorBlendAttachmentState),
+        .pAttachments = colorBlendAttachments,
     };
 
     // Create the pipeline layouts
@@ -575,7 +577,7 @@ void createPipelines(HxfGraphicsHandler* restrict engine) {
     VkGraphicsPipelineCreateInfo pipelineInfos[] = {
         { // Cube pipeline
             .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
-            .stageCount = 2,
+            .stageCount = sizeof(cubeStages) / sizeof(VkPipelineShaderStageCreateInfo),
             .pStages = cubeStages,
             .pVertexInputState = &cubeInputInfo,
             .pInputAssemblyState = &triangleListInputAssemblyInfo,
@@ -589,7 +591,7 @@ void createPipelines(HxfGraphicsHandler* restrict engine) {
         },
         { // Icon pipeline
             .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
-            .stageCount = 2,
+            .stageCount = sizeof(iconStages) / sizeof(VkPipelineShaderStageCreateInfo),
             .pStages = iconStages,
             .pVertexInputState = &iconInputInfo,
             .pInputAssemblyState = &triangleListInputAssemblyInfo,
@@ -604,7 +606,7 @@ void createPipelines(HxfGraphicsHandler* restrict engine) {
         },
         { // Pointer pipeline
             .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
-            .stageCount = 2,
+            .stageCount = sizeof(pointerStages) / sizeof(VkPipelineShaderStageCreateInfo),
             .pStages = pointerStages,
             .pVertexInputState = &pointerInputInfo,
             .pInputAssemblyState = &triangleFanInputAssemblyInfo,
