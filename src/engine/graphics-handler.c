@@ -976,7 +976,7 @@ static void allocateMemory(HxfGraphicsHandler* restrict graphics, const TextureI
     // Transfer buffer
     drawingData->transferBufferOffset = memoryOffset;
 
-    bufferInfo.size = deviceBufferSizeRequired; // We need to copy from the device buffer
+    bufferInfo.size = max(deviceBufferSizeRequired, textureImageSize); // We need to copy from the device buffer
     bufferInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
     HXF_TRY_VK(vkCreateBuffer(graphics->device, &bufferInfo, NULL, &drawingData->transferBuffer));
     vkGetBufferMemoryRequirements(graphics->device, drawingData->transferBuffer, &memoryRequirements);
