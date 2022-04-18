@@ -34,13 +34,11 @@ static void updateDrawnFaces(HxfGameData* restrict game) {
     drawingData->faceLeftCount = 0;
 
     // Select the faces that are not hidden by other cubes.
-
-    for (int x = 0; x != HXF_WORLD_PIECE_SIZE; x++) {
-        for (int y = 0; y != HXF_WORLD_PIECE_SIZE; y++) {
-            for (int z = 0; z != HXF_WORLD_PIECE_SIZE; z++) {
-
-                HxfMapElement* iterator = game->world.pieces.start;
-                while (iterator != NULL) { // For each world piece.
+    HxfMapElement* iterator = game->world.pieces.start;
+    while (iterator != NULL) { // For each world piece.
+        for (int x = 0; x != HXF_WORLD_PIECE_SIZE; x++) {
+            for (int y = 0; y != HXF_WORLD_PIECE_SIZE; y++) {
+                for (int z = 0; z != HXF_WORLD_PIECE_SIZE; z++) {
                     HxfWorldPiece* const worldPiece = (HxfWorldPiece*)iterator->value;
                     HxfIvec3* const worldPiecePosition = (HxfIvec3*)iterator->key;
 
@@ -79,11 +77,10 @@ static void updateDrawnFaces(HxfGameData* restrict game) {
                             addDrawnFace(&drawingData->cubeInstances[HXF_FACES_BACK_OFFSET + *index], &position, textureId, index);
                         }
                     }
-
-                    iterator = iterator->next;
                 }
             }
         }
+        iterator = iterator->next;
     }
 }
 
