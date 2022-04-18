@@ -510,24 +510,19 @@ static void recordDrawCommandBuffer(HxfGraphicsHandler* restrict graphics, uint3
 
     // The pointed cube
 
-    const HxfIvec3 pointedCube = graphics->camera->nearPointedCube;
-    if (graphics->camera->isPointingToCube
-        && pointedCube.x >= 0 && pointedCube.x < HXF_WORLD_LENGTH
-        && pointedCube.y >= 0 && pointedCube.y < HXF_WORLD_LENGTH
-        && pointedCube.z >= 0 && pointedCube.z < HXF_WORLD_LENGTH
-        && graphics->world->cubes[pointedCube.x][pointedCube.y][pointedCube.z] == 0) {
+    if (graphics->camera->isPointingToCube) {
         vkCmdDrawIndexed(graphics->drawCommandBuffers[currentFrameIndex], HXF_CUBE_VERTEX_INDEX_COUNT, 1, 0, 0, HXF_CUBE_INSTANCE_COUNT * 6);
     }
 
     // All the cubes
     // (A draw call for each faces)
 
-    vkCmdDrawIndexed(graphics->drawCommandBuffers[currentFrameIndex], 6, graphics->drawingData.faceTopCount, 0, 0, 0);
-    vkCmdDrawIndexed(graphics->drawCommandBuffers[currentFrameIndex], 6, graphics->drawingData.faceBackCount, 6, 0, HXF_CUBE_INSTANCE_COUNT * 1);
-    vkCmdDrawIndexed(graphics->drawCommandBuffers[currentFrameIndex], 6, graphics->drawingData.faceBottomCount, 12, 0, HXF_CUBE_INSTANCE_COUNT * 2);
-    vkCmdDrawIndexed(graphics->drawCommandBuffers[currentFrameIndex], 6, graphics->drawingData.faceFrontCount, 18, 0, HXF_CUBE_INSTANCE_COUNT * 3);
-    vkCmdDrawIndexed(graphics->drawCommandBuffers[currentFrameIndex], 6, graphics->drawingData.faceRightCount, 24, 0, HXF_CUBE_INSTANCE_COUNT * 4);
-    vkCmdDrawIndexed(graphics->drawCommandBuffers[currentFrameIndex], 6, graphics->drawingData.faceLeftCount, 30, 0, HXF_CUBE_INSTANCE_COUNT * 5);
+    vkCmdDrawIndexed(graphics->drawCommandBuffers[currentFrameIndex], 6, graphics->drawingData.faceTopCount, 0, 0, HXF_FACES_TOP_OFFSET);
+    vkCmdDrawIndexed(graphics->drawCommandBuffers[currentFrameIndex], 6, graphics->drawingData.faceBackCount, 6, 0, HXF_FACES_BACK_OFFSET);
+    vkCmdDrawIndexed(graphics->drawCommandBuffers[currentFrameIndex], 6, graphics->drawingData.faceBottomCount, 12, 0, HXF_FACES_BOTTOM_OFFSET);
+    vkCmdDrawIndexed(graphics->drawCommandBuffers[currentFrameIndex], 6, graphics->drawingData.faceFrontCount, 18, 0, HXF_FACES_FRONT_OFFSET);
+    vkCmdDrawIndexed(graphics->drawCommandBuffers[currentFrameIndex], 6, graphics->drawingData.faceRightCount, 24, 0, HXF_FACES_RIGHT_OFFSET);
+    vkCmdDrawIndexed(graphics->drawCommandBuffers[currentFrameIndex], 6, graphics->drawingData.faceLeftCount, 30, 0, HXF_FACES_LEFT_OFFSET);
 
     // The cube selector icon
 
@@ -903,7 +898,7 @@ static void allocateMemory(HxfGraphicsHandler* restrict graphics, const TextureI
 
     // Cube instance
     drawingData->cubeInstancesOffset = memoryOffset;
-    drawingData->cubeInstancesSize = sizeof(drawingData->cubeInstances);
+    drawingData->cubeInstancesSize = HXF_CUBE_INSTANCES_SIZE;
     memoryOffset = drawingData->cubeInstancesOffset + drawingData->cubeInstancesSize;
 
     // Pointed cube

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <stdint.h>
+
 /**
  * @brief A 4×4 identity matrix.
  */
@@ -23,8 +25,8 @@ typedef struct HxfVec2 {
  * @brief A 2 dimensional vector of int values.
  */
 typedef struct HxfIvec2 {
-    int x;
-    int y;
+    int32_t x;
+    int32_t y;
 } HxfIvec2;
 
 /**
@@ -42,9 +44,9 @@ typedef struct HxfVec3 {
  * @brief A 3 dimensional vector of integer values.
  */
 typedef struct HxfIvec3 {
-    int x;
-    int y;
-    int z;
+    int32_t x;
+    int32_t y;
+    int32_t z;
 } HxfIvec3;
 
 /**

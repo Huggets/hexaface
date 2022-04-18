@@ -20,6 +20,7 @@ add_executable(
     src/engine/input-handler.c
     src/engine/game-handler.c
     src/math/linear-algebra.c
+    src/container/map.c
 )
 
 target_include_directories(hexaface PRIVATE include)

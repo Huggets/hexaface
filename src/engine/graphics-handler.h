@@ -16,7 +16,8 @@
 
 #define HXF_CUBE_VERTEX_DATA_COUNT 24
 #define HXF_CUBE_VERTEX_INDEX_COUNT 36
-#define HXF_CUBE_INSTANCE_COUNT (HXF_WORLD_LENGTH * HXF_WORLD_LENGTH * HXF_WORLD_LENGTH)
+#define HXF_CUBE_INSTANCE_COUNT HXF_WORLD_PIECE_CUBE_COUNT * HXF_HORIZONTAL_VIEW_DISTANCE * HXF_HORIZONTAL_VIEW_DISTANCE * HXF_VERTICAL_VIEW_DISTANCE
+#define HXF_CUBE_INSTANCES_SIZE 6 * sizeof(HxfCubeInstanceData) * HXF_CUBE_INSTANCE_COUNT
 
 #define HXF_ICON_VERTEX_DATA_COUNT 4
 #define HXF_ICON_VERTEX_INDEX_COUNT 6
@@ -26,12 +27,12 @@
 
 #define HXF_TEXTURE_COUNT 5
 
-#define HXF_FACES_TOP 0
-#define HXF_FACES_BACK 1
-#define HXF_FACES_BOTTOM 2
-#define HXF_FACES_FRONT 3
-#define HXF_FACES_RIGHT 4
-#define HXF_FACES_LEFT 5
+#define HXF_FACES_TOP_OFFSET     0 * HXF_CUBE_INSTANCE_COUNT
+#define HXF_FACES_BACK_OFFSET    1 * HXF_CUBE_INSTANCE_COUNT
+#define HXF_FACES_BOTTOM_OFFSET  2 * HXF_CUBE_INSTANCE_COUNT
+#define HXF_FACES_FRONT_OFFSET   3 * HXF_CUBE_INSTANCE_COUNT
+#define HXF_FACES_RIGHT_OFFSET   4 * HXF_CUBE_INSTANCE_COUNT
+#define HXF_FACES_LEFT_OFFSET    5 * HXF_CUBE_INSTANCE_COUNT
 
 typedef struct HxfCubeInstanceData {
     alignas(16) HxfVec3 position;
@@ -89,7 +90,7 @@ typedef struct HxfDrawingData {
     VkFormat depthImageFormat; ///< The format of the depth image
 
     HxfCubeVertexData cubesVertices[HXF_CUBE_VERTEX_DATA_COUNT];
-    HxfCubeInstanceData cubeInstances[6][HXF_CUBE_INSTANCE_COUNT]; ///< Data for each cubes faces
+    HxfCubeInstanceData* cubeInstances; ///< Data for each cubes faces (6 * HXF_CUBE_INSTANCE_COUNT)
     uint32_t cubesVertexIndices[HXF_CUBE_VERTEX_INDEX_COUNT];
 
     HxfIconVertexData iconVertices[HXF_ICON_VERTEX_DATA_COUNT];

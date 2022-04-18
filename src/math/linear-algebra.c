@@ -97,22 +97,22 @@ HxfIvec3 roundVector(HxfVec3* restrict vec) {
     HxfIvec3 roundedVector;
 
     if (vec->x < 0) {
-        roundedVector.x = (int)floorf(vec->x);
+        roundedVector.x = (int32_t)floorf(vec->x);
     }
     else {
-        roundedVector.x = (int)vec->x;
+        roundedVector.x = (int32_t)vec->x;
     }
     if (vec->y < 0) {
-        roundedVector.y = (int)floorf(vec->y);
+        roundedVector.y = (int32_t)floorf(vec->y);
     }
     else {
-        roundedVector.y = (int)vec->y;
+        roundedVector.y = (int32_t)vec->y;
     }
     if (vec->z < 0) {
-        roundedVector.z = (int)floorf(vec->z);
+        roundedVector.z = (int32_t)floorf(vec->z);
     }
     else {
-        roundedVector.z = (int)vec->z;
+        roundedVector.z = (int32_t)vec->z;
     }
 
     return roundedVector;
