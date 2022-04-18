@@ -27,7 +27,7 @@ typedef struct HxfMap {
  *
  * @return A pointer to the map element or NULL if it was not found.
  */
-HxfMapElement* hxfMapGet(const HxfMap* map, const void* key);
+HxfMapElement* hxfMapGet(const HxfMap* restrict map, const void* restrict key);
 
 /**
  * @brief Set the value of the element with the given key.
@@ -38,7 +38,7 @@ HxfMapElement* hxfMapGet(const HxfMap* map, const void* key);
  * @param key The key of the element. Must not be NULL.
  * @param value The value of the element.
  */
-void hxfMapSet(HxfMap* map, void* key, void* restrict value);
+void hxfMapSet(HxfMap* restrict map, void* restrict key, void* restrict value);
 
 /**
  * @brief Remove the element of the map.
@@ -48,4 +48,4 @@ void hxfMapSet(HxfMap* map, void* key, void* restrict value);
  * @param map The map where the element is.
  * @param key The key of the element.
  */
-void hxfMapRemove(HxfMap* map, const void* key);
+void hxfMapRemove(HxfMap* restrict map, const void* restrict key);

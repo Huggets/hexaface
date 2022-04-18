@@ -2,7 +2,7 @@
 #include "../hxf.h"
 #include <stdlib.h>
 
-HxfMapElement* hxfMapGet(const HxfMap* map, const void* key) {
+HxfMapElement* hxfMapGet(const HxfMap* restrict map, const void* restrict key) {
     HxfMapElement* iterator = map->start;
 
     while (iterator != NULL && !map->compareKey(iterator->key, key)) {
@@ -12,7 +12,7 @@ HxfMapElement* hxfMapGet(const HxfMap* map, const void* key) {
     return iterator;
 }
 
-void hxfMapSet(HxfMap* map, void* key, void* value) {
+void hxfMapSet(HxfMap* restrict map, void* restrict key, void* restrict value) {
     // Set the first element if the map is empty.
 
     if (map->start == NULL) {
@@ -46,7 +46,7 @@ void hxfMapSet(HxfMap* map, void* key, void* value) {
     }
 }
 
-void hxfMapRemove(HxfMap* map, const void* key) {
+void hxfMapRemove(HxfMap* restrict map, const void* restrict key) {
     HxfMapElement* iterator = map->start;
 
     if (map->compareKey(iterator->key, key)) { // This is the first element of the map
