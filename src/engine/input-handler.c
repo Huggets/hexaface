@@ -275,7 +275,7 @@ void hxfInputInit(HxfAppData* app) {
 }
 
 void hxfHandleInput(HxfAppData* restrict app) {
-    const float moveSpeed = 3.0f;
+    const float moveSpeed = 5.0f;
     const float repeatTime = 0.2f;
 
     /* MISC KEYS */

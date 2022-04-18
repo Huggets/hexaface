@@ -61,6 +61,28 @@ void* hxfMalloc(size_t size) {
     return data;
 }
 
+void* hxfCalloc(size_t num, size_t size) {
+    void* data = calloc(num, size);
+
+    if (data == NULL) {
+        HXF_MSG_ERROR("Could not allocate memory");
+        exit(EXIT_FAILURE);
+    }
+
+#if defined(HXF_DEBUG_ALLOC)
+    // Set a new HxfAlloc
+    allocsInfo[allocIndex].ptr = data;
+    allocsInfo[allocIndex].size = num * size;
+
+    byteAllocated += size; // Update the value
+    allocIndex++;
+    allocCount++;
+    printf("malloc: new size %lluB, malloc count = %llu\n", byteAllocated, allocCount);
+#endif
+
+    return data;
+}
+
 void* hxfRealloc(void* ptr, size_t size) {
     void* data = realloc(ptr, size);
 
@@ -80,7 +102,7 @@ void* hxfRealloc(void* ptr, size_t size) {
             printf("realloc: new size %lluB, malloc count = %llu\n", byteAllocated, allocCount);
             break;
         }
-}
+    }
 #endif
 
     return data;

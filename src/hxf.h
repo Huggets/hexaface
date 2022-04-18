@@ -36,6 +36,8 @@ typedef enum HxfResult {
  */
 void* hxfMalloc(size_t size);
 
+void* hxfCalloc(size_t num, size_t size);
+
 /**
  * @brief Reallocate ptr with its new size.
  *

@@ -1,6 +1,6 @@
 #include "game-handler.h"
 
-static const char WORLD_FILENAME[] = "/world"; ///< The path to the world file
+static const char WORLD_DIRECTORY[] = "/world"; ///< The path to the world file
 
 /**
  * @brief Append a new cube’s face that will be drawn.
@@ -87,9 +87,10 @@ static void updateDrawnFaces(HxfGameData* restrict game) {
 void hxfGameInit(HxfGameData* restrict game) {
     game->cubeSelector = 1;
 
-    char* worldFilePath = hxfMalloc(sizeof(char) * (strlen(game->appdataDirectory) + sizeof(WORLD_FILENAME)));
-    strcpy(worldFilePath, game->appdataDirectory);
-    strcat(worldFilePath, WORLD_FILENAME);
+    char** worldpath = &game->world.directoryPath;
+    *worldpath = hxfMalloc(sizeof(char) * (strlen(game->appdataDirectory) + sizeof(WORLD_DIRECTORY)));
+    strcpy(*worldpath, game->appdataDirectory);
+    strcat(*worldpath, WORLD_DIRECTORY);
 
     HxfWorldSaveData savedData = {
         .world = &game->world,
@@ -97,33 +98,30 @@ void hxfGameInit(HxfGameData* restrict game) {
         .cameraYaw = &game->camera.yaw,
         .cameraPitch = &game->camera.pitch
     };
-    hxfWorldLoad(worldFilePath, &savedData);
-
-    hxfFree(worldFilePath);
+    hxfWorldLoad(&savedData);
 
     updateDrawnFaces(game); // We need to define which cubes’ faces will be drawn
 
 }
 
 void hxfGameStop(HxfGameData* restrict game) {
-    char* worldFilePath = hxfMalloc(sizeof(char) * (strlen(game->appdataDirectory) + sizeof(WORLD_FILENAME)));
-    strcpy(worldFilePath, game->appdataDirectory);
-    strcat(worldFilePath, WORLD_FILENAME);
-
-
     HxfWorldSaveData savedData = {
         .world = &game->world,
         .cameraPosition = &game->camera.position,
         .cameraYaw = &game->camera.yaw,
         .cameraPitch = &game->camera.pitch
     };
-    hxfWorldSave(worldFilePath, &savedData);
+    hxfWorldSave(&savedData);
 
-    hxfFree(worldFilePath);
+    hxfFree(game->world.directoryPath);
 }
 
 void hxfGameFrame(HxfGameData* restrict game) {
     hxfUpdatePointedCube(&game->camera, &game->world);
+    if (hxfWorldUpdatePiece(&game->world, &game->camera.position)) {
+        updateDrawnFaces(game);
+        hxfGraphicsUpdateCubeBuffer(game->graphics);
+    }
 }
 
 void hxfReplaceCube(HxfGameData* restrict game, const HxfIvec3* restrict position, uint32_t textureIndex) {

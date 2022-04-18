@@ -1,147 +1,29 @@
-// #include "world.h"
-// #include "hxf.h"
-// #include <stdio.h>
-// #include <stdint.h>
-
-// #define CAMERA_POSITION_SIZE sizeof(HxfVec3)
-// #define CAMERA_YAW_SIZE sizeof(float)
-// #define CAMERA_OFFSET_SIZE sizeof(float)
-// #define CUBES_SIZE sizeof(uint32_t) * HXF_WORLD_PIECE_SIZE * HXF_WORLD_PIECE_SIZE * HXF_WORLD_PIECE_SIZE
-
-// #define CAMERA_POSITION_OFFSET 0
-// #define CAMERA_YAW_OFFSET CAMERA_POSITION_OFFSET + CAMERA_POSITION_SIZE
-// #define CAMERA_PITCH_OFFSET CAMERA_YAW_OFFSET + CAMERA_YAW_SIZE
-// #define CUBES_OFFSET CAMERA_PITCH_OFFSET + CAMERA_OFFSET_SIZE
-
-// #define FILE_SIZE CUBES_OFFSET + CUBES_SIZE
-
-// /**
-//  * @brief Create a world file.
-//  *
-//  * It create a world file that already contains cubes.
-//  *
-//  * @param filename The name of the file.
-//  */
-// static void createWorldFile(const char* restrict filename) {
-//     // Create the file
-
-//     FILE* file = fopen(filename, "w");
-
-//     if (!file) {
-//         HXF_FATAL("Could not create world file");
-//     }
-
-//     // Add default cubes to the world
-
-//     char filecontent[FILE_SIZE] = { 0 };
-//     uint32_t* fileCubes = (uint32_t*)(filecontent + CUBES_OFFSET);
-//     for (int x = 0; x != HXF_WORLD_PIECE_SIZE; x++) {
-//         for (int z = 0; z != HXF_WORLD_PIECE_SIZE; z++) {
-//             // A layer of stone
-//             for (int y = 0; y != 2; y++) {
-//                 fileCubes[x * HXF_WORLD_PIECE_SIZE * HXF_WORLD_PIECE_SIZE + y * HXF_WORLD_PIECE_SIZE + z] = 3;
-//             }
-//             // A layer of dirt
-//             fileCubes[x * HXF_WORLD_PIECE_SIZE * HXF_WORLD_PIECE_SIZE + 2 * HXF_WORLD_PIECE_SIZE + z] = 2;
-//             // And a layer of grass
-//             fileCubes[x * HXF_WORLD_PIECE_SIZE * HXF_WORLD_PIECE_SIZE + 3 * HXF_WORLD_PIECE_SIZE + z] = 1;
-//         }
-//     }
-
-//     // Write to file then close the file
-
-//     fwrite(filecontent, sizeof(char), FILE_SIZE, file);
-
-//     fclose(file);
-// }
-
-// void hxfWorldLoad(const char* restrict filename, HxfWorldSaveData* data) {
-//     // Open the world file.
-//     // If the file does not exist, it create a new world file.
-
-//     FILE* file = fopen(filename, "rb");
-
-//     if (!file) {
-//         createWorldFile(filename);
-
-//         file = fopen(filename, "rb");
-//         if (!file) {
-//             HXF_FATAL("Could not open the world file\n");
-//         }
-//     }
-
-//     // Get the content of the file
-
-//     char filecontent[FILE_SIZE];
-//     fread(filecontent, sizeof(char), FILE_SIZE, file);
-
-//     fclose(file);
-
-//     // Get the world data
-//     uint32_t* fileCubes = (uint32_t*)(filecontent + CUBES_OFFSET);
-//     for (int x = 0; x != HXF_WORLD_PIECE_SIZE; x++) {
-//         for (int y = 0; y != HXF_WORLD_PIECE_SIZE; y++) {
-//             for (int z = 0; z != HXF_WORLD_PIECE_SIZE; z++) {
-//                 data->world->piece.cubes[x][y][z] = fileCubes[x * HXF_WORLD_PIECE_SIZE * HXF_WORLD_PIECE_SIZE + y * HXF_WORLD_PIECE_SIZE + z];
-//             }
-//         }
-//     }
-
-//     // Get the player position
-
-//     HxfVec3* fileCameraPosition = (HxfVec3*)(filecontent + CAMERA_POSITION_OFFSET);
-//     float* fileCameraYaw = (float*)(filecontent + CAMERA_YAW_OFFSET);
-//     float* fileCameraPitch = (float*)(filecontent + CAMERA_PITCH_OFFSET);
-//     *data->cameraPosition = *fileCameraPosition;
-//     *data->cameraYaw = *fileCameraYaw;
-//     *data->cameraPitch = *fileCameraPitch;
-// }
-
-// void hxfWorldSave(const char* restrict filename, HxfWorldSaveData* data) {
-//     FILE* file = fopen(filename, "w");
-
-//     if (!file) {
-//         HXF_MSG_ERROR("Could not open file to save the world");
-//         exit(EXIT_FAILURE);
-//     }
-
-//     char filecontent[FILE_SIZE];
-
-//     // Write the world to the file.
-
-//     uint32_t* fileCubes = (uint32_t*)(filecontent + CUBES_OFFSET);
-//     for (int x = 0; x != HXF_WORLD_PIECE_SIZE; x++) {
-//         for (int y = 0; y != HXF_WORLD_PIECE_SIZE; y++) {
-//             for (int z = 0; z != HXF_WORLD_PIECE_SIZE; z++) {
-//                 fileCubes[x * HXF_WORLD_PIECE_SIZE * HXF_WORLD_PIECE_SIZE + y * HXF_WORLD_PIECE_SIZE + z] = data->world->piece.cubes[x][y][z];
-//             }
-//         }
-//     }
-
-//     // Write the camera data
-
-//     HxfVec3* fileCameraPosition = (HxfVec3*)(filecontent + CAMERA_POSITION_OFFSET);
-//     float* fileCameraYaw = (float*)(filecontent + CAMERA_YAW_OFFSET);
-//     float* fileCameraPitch = (float*)(filecontent + CAMERA_PITCH_OFFSET);
-//     *fileCameraPosition = *data->cameraPosition;
-//     *fileCameraYaw = *data->cameraYaw;
-//     *fileCameraPitch = *data->cameraPitch;
-
-//     fwrite(filecontent, sizeof(char), FILE_SIZE, file);
-
-//     fclose(file);
-// }
-
 #include "world.h"
 #include "hxf.h"
 #include <math.h>
+#include <stdio.h>
+#include <string.h>
+
+#define WORLD_PIECE_FILE_SIZE HXF_WORLD_PIECE_CUBE_COUNT * sizeof(uint32_t)
+
+#define WORLD_INFO_YAW_SIZE sizeof(float)
+#define WORLD_INFO_YAW_OFFSET 0
+
+#define WORLD_INFO_PITCH_SIZE sizeof(float)
+#define WORLD_INFO_PITCH_OFFSET WORLD_INFO_YAW_OFFSET + WORLD_INFO_YAW_SIZE
+
+#define WORLD_INFO_POSITON_SIZE sizeof(HxfVec3)
+#define WORLD_INFO_POSITION_OFFSET WORLD_INFO_PITCH_OFFSET + WORLD_INFO_PITCH_SIZE
+
+#define WORLD_INFO_FILE_SIZE WORLD_INFO_POSITION_OFFSET + WORLD_INFO_POSITON_SIZE
 
 /**
- * @brief The function used with the world pieces map to compare two key.
+ * @brief Compare two HxfIvec3 and return true if they have the same values.
  *
- * @param a An array of 3 int
- * @param b
- * @return int
+ * @param a HxfIvec3*
+ * @param b HxfIvec3*
+ *
+ * @return 1 if true, 0 otherwise.
  */
 static int worldPieceMapCompareKey(const void* a, const void* b) {
     const HxfIvec3* const operandA = (HxfIvec3*)a;
@@ -150,113 +32,146 @@ static int worldPieceMapCompareKey(const void* a, const void* b) {
     return operandA->x == operandB->x && operandA->y == operandB->y && operandA->z == operandB->z;
 }
 
-void hxfWorldLoad(const char* restrict filename, HxfWorldSaveData* restrict data) {
-    data->cameraPitch = 0;
-    data->cameraYaw = 0;
-    data->cameraPosition->x = -1;
-    data->cameraPosition->y = 3;
-    data->cameraPosition->z = 0;
-
-    HxfMap* const restrict cubesMap = &data->world->pieces;
-    HxfWorldPiece* piece;
-    cubesMap->compareKey = worldPieceMapCompareKey;
-
-    piece = hxfMalloc(sizeof(HxfWorldPiece));
-    piece->position.x = 0;
-    piece->position.y = 0;
-    piece->position.z = 0;
+static void generateWorldPiece(HxfWorldPiece* restrict worldPiece) {
     for (int x = 0; x != HXF_WORLD_PIECE_SIZE; x++) {
         for (int z = 0; z != HXF_WORLD_PIECE_SIZE; z++) {
-            for (int y = 0; y != 3; y++) {
-                piece->cubes[x][y][z] = 2;
-            }
-            for (int y = 3; y != HXF_WORLD_PIECE_SIZE; y++) {
-                piece->cubes[x][y][z] = 0;
+            for (int y = 0; y != 2; y++) {
+                worldPiece->cubes[x][y][z] = 3;
             }
         }
     }
-    hxfMapSet(cubesMap, &piece->position, piece);
-
-    piece = hxfMalloc(sizeof(HxfWorldPiece));
-    piece->position.x = 1;
-    piece->position.y = 0;
-    piece->position.z = 0;
-    for (int x = 0; x != HXF_WORLD_PIECE_SIZE; x++) {
-        for (int z = 0; z != HXF_WORLD_PIECE_SIZE; z++) {
-            for (int y = 0; y != 5; y++) {
-                piece->cubes[x][y][z] = 3;
-            }
-            for (int y = 5; y != HXF_WORLD_PIECE_SIZE; y++) {
-                piece->cubes[x][y][z] = 0;
-            }
-        }
-    }
-    hxfMapSet(cubesMap, &piece->position, piece);
-
-    piece = hxfMalloc(sizeof(HxfWorldPiece));
-    piece->position.x = -1;
-    piece->position.y = 0;
-    piece->position.z = 0;
-    for (int x = 0; x != HXF_WORLD_PIECE_SIZE; x++) {
-        for (int z = 0; z != HXF_WORLD_PIECE_SIZE; z++) {
-            for (int y = 0; y != 5; y++) {
-                piece->cubes[x][y][z] = 3;
-            }
-            for (int y = 5; y != HXF_WORLD_PIECE_SIZE; y++) {
-                piece->cubes[x][y][z] = 0;
-            }
-        }
-    }
-    hxfMapSet(cubesMap, &piece->position, piece);
-
-    piece = hxfMalloc(sizeof(HxfWorldPiece));
-    piece->position.x = 1;
-    piece->position.y = 0;
-    piece->position.z = 1;
-    for (int x = 0; x != HXF_WORLD_PIECE_SIZE; x++) {
-        for (int z = 0; z != HXF_WORLD_PIECE_SIZE; z++) {
-            for (int y = 0; y != 5; y++) {
-                piece->cubes[x][y][z] = 3;
-            }
-            for (int y = 5; y != HXF_WORLD_PIECE_SIZE; y++) {
-                piece->cubes[x][y][z] = 0;
-            }
-        }
-    }
-    hxfMapSet(cubesMap, &piece->position, piece);
-
-    piece = hxfMalloc(sizeof(HxfWorldPiece));
-    piece->position.x = 0;
-    piece->position.y = 0;
-    piece->position.z = -1;
-    for (int x = 0; x != HXF_WORLD_PIECE_SIZE; x++) {
-        for (int z = 0; z != HXF_WORLD_PIECE_SIZE; z++) {
-            for (int y = 0; y != 4; y++) {
-                piece->cubes[x][y][z] = 3;
-            }
-            for (int y = 5; y != HXF_WORLD_PIECE_SIZE; y++) {
-                piece->cubes[x][y][z] = 0;
-            }
-        }
-    }
-    hxfMapSet(cubesMap, &piece->position, piece);
 }
 
-void hxfWorldSave(const char* restrict filename, HxfWorldSaveData* restrict data) {
-    // Free the map along with the elements’ value that was previously allocated.
+/**
+ * @brief Load a world piece from file, from its position.
+ *
+ * @param position The position of the world piece inside the world.
+ *
+ * @return A pointer to the world piece that is loaded.
+ */
+static HxfWorldPiece* loadWorldPiece(const char* restrict worldDirectory, const HxfIvec3* position) {
+    HxfWorldPiece* worldPiece = hxfCalloc(1, sizeof(HxfWorldPiece));
+    worldPiece->position = *position;
 
-    HxfMapElement* iterator = data->world->pieces.start;
+    // Get the filename
 
-    while (iterator != NULL) {
-        // TODO correct hxfMapRemove to avoid a freeze when exiting the application.
-        // The bug seems to happened when free the iterator value then remove the map element.
-        // So for now, the map is manually cleaned.
+    int offset = strlen(worldDirectory);
+    char* filename = hxfMalloc(sizeof(char) * (offset + 31)); // 10 characters for each world coordinates
+    memcpy(filename, worldDirectory, offset);
+    sprintf(filename + offset, "/%i_%i_%i", position->x, position->y, position->z);
 
-        HxfMapElement* next = iterator->next;
-        hxfFree(iterator->value);
-        hxfFree(iterator);
-        iterator = next;
+    // Open the file for reading
+
+    char filecontent[WORLD_PIECE_FILE_SIZE] = { 0 };
+    FILE* file = fopen(filename, "rb");
+
+    // If the file exist load it
+    if (file) {
+        fread(filecontent, sizeof(char), WORLD_PIECE_FILE_SIZE, file);
+        fclose(file);
+
+        uint32_t* cubes = (uint32_t*)filecontent;
+
+        for (int x = 0; x != HXF_WORLD_PIECE_SIZE; x++) {
+            for (int z = 0; z != HXF_WORLD_PIECE_SIZE; z++) {
+                for (int y = 0; y != HXF_WORLD_PIECE_SIZE; y++) {
+                    worldPiece->cubes[x][y][z] = cubes[x * HXF_WORLD_PIECE_SIZE * HXF_WORLD_PIECE_SIZE + y * HXF_WORLD_PIECE_SIZE + z];
+                }
+            }
+        }
     }
+    // Else generate the world piece
+    else {
+        generateWorldPiece(worldPiece);
+    }
+
+    hxfFree(filename);
+
+    return worldPiece;
+}
+
+static void saveWorldPiece(const HxfWorldPiece* restrict worldPiece, const char* restrict worldDirectory) {
+    // Get the filename
+
+    int offset = strlen(worldDirectory);
+    char* filename = hxfMalloc(sizeof(char) * (offset + 31)); // 10 characters for each world coordinates
+    memcpy(filename, worldDirectory, offset);
+    sprintf(filename + offset, "/%i_%i_%i", worldPiece->position.x, worldPiece->position.y, worldPiece->position.z);
+
+    char filecontent[WORLD_PIECE_FILE_SIZE] = { 0 };
+    FILE* file = fopen(filename, "wb");
+    if (file == NULL) { HXF_FATAL("Could not save the world"); }
+
+    uint32_t* cubes = (uint32_t*)filecontent;
+
+    for (int x = 0; x != HXF_WORLD_PIECE_SIZE; x++) {
+        for (int z = 0; z != HXF_WORLD_PIECE_SIZE; z++) {
+            for (int y = 0; y != HXF_WORLD_PIECE_SIZE; y++) {
+                cubes[x * HXF_WORLD_PIECE_SIZE * HXF_WORLD_PIECE_SIZE + y * HXF_WORLD_PIECE_SIZE + z] = worldPiece->cubes[x][y][z];
+            }
+        }
+    }
+
+    fwrite(filecontent, sizeof(char), sizeof(filecontent), file);
+
+    fclose(file);
+    hxfFree(filename);
+}
+
+static void loadWorldInfo(HxfWorldSaveData* restrict data) {
+    int offset = strlen(data->world->directoryPath);
+    char* filename = hxfMalloc(sizeof(char) * (offset + 31)); // 10 characters for each world coordinates
+    memcpy(filename, data->world->directoryPath, offset);
+    memcpy(filename + offset, "/info", 6);
+
+    char filecontent[WORLD_INFO_FILE_SIZE];
+
+    FILE* file = fopen(filename, "rb");
+    if (file) {
+        fread(filecontent, sizeof(char), WORLD_INFO_FILE_SIZE, file);
+        fclose(file);
+
+        float* fileYaw = (float*)(filecontent + WORLD_INFO_YAW_OFFSET);
+        float* filePitch = (float*)(filecontent + WORLD_INFO_PITCH_OFFSET);
+        HxfVec3* filePosition = (HxfVec3*)(filecontent + WORLD_INFO_POSITION_OFFSET);
+
+        *data->cameraPitch = *filePitch;
+        *data->cameraYaw = *fileYaw;
+        *data->cameraPosition = *filePosition;
+    }
+    else {
+        *data->cameraPitch = 0;
+        *data->cameraYaw = 0;
+        data->cameraPosition->x = 0;
+        data->cameraPosition->y = 0;
+        data->cameraPosition->z = 0;
+    }
+
+    hxfFree(filename);
+}
+
+static void saveWorldInfo(HxfWorldSaveData* restrict data) {
+    int offset = strlen(data->world->directoryPath);
+    char* filename = hxfMalloc(sizeof(char) * (offset + 31)); // 10 characters for each world coordinates
+    memcpy(filename, data->world->directoryPath, offset);
+    memcpy(filename + offset, "/info", 6);
+
+    char filecontent[WORLD_INFO_FILE_SIZE];
+
+    FILE* file = fopen(filename, "wb");
+    if (file == NULL) { HXF_FATAL("Could not save the world"); }
+
+    float* fileYaw = (float*)(filecontent + WORLD_INFO_YAW_OFFSET);
+    float* pitchFile = (float*)(filecontent + WORLD_INFO_PITCH_OFFSET);
+    HxfVec3* positionFile = (HxfVec3*)(filecontent + WORLD_INFO_POSITION_OFFSET);
+
+    *fileYaw = *data->cameraYaw;
+    *pitchFile = *data->cameraPitch;
+    *positionFile = *data->cameraPosition;
+
+    fwrite(filecontent, sizeof(char), WORLD_INFO_FILE_SIZE, file);
+    fclose(file);
+    hxfFree(filename);
 }
 
 HxfIvec3 hxfWorldGetPiecePositionF(const HxfVec3* restrict globalPosition) {
@@ -325,4 +240,96 @@ HxfIvec3 hxfWorldGetLocalPosition(const HxfIvec3* restrict globalPosition) {
     if (localPosition.z < 0) localPosition.z += 16;
 
     return localPosition;
+}
+
+void hxfWorldLoad(HxfWorldSaveData* restrict data) {
+    loadWorldInfo(data);
+
+    HxfMap* const cubesMap = &data->world->pieces;
+    cubesMap->compareKey = worldPieceMapCompareKey;
+
+    const HxfIvec3 worldPiecePosition = hxfWorldGetPiecePositionF(data->cameraPosition);
+    const int32_t minX = worldPiecePosition.x - HXF_HORIZONTAL_VIEW_DISTANCE / 2;
+    const int32_t maxX = worldPiecePosition.x + HXF_HORIZONTAL_VIEW_DISTANCE / 2;
+    const int32_t minZ = worldPiecePosition.z - HXF_HORIZONTAL_VIEW_DISTANCE / 2;
+    const int32_t maxZ = worldPiecePosition.z + HXF_HORIZONTAL_VIEW_DISTANCE / 2;
+
+    for (int32_t x = minX; x != maxX; x++) {
+        for (int32_t z = minZ; z != maxZ; z++) {
+            HxfIvec3 pos = { x, 0, z };
+            HxfWorldPiece* piece = loadWorldPiece(data->world->directoryPath, &pos);
+            hxfMapSet(cubesMap, &piece->position, piece);
+        }
+    }
+}
+
+void hxfWorldSave(HxfWorldSaveData* restrict data) {
+    saveWorldInfo(data);
+
+    // Free the map along with the elements’ value that was previously allocated.
+
+    HxfMapElement* iterator = data->world->pieces.start;
+
+    while (iterator != NULL) {
+        saveWorldPiece((HxfWorldPiece*)iterator->value, data->world->directoryPath);
+        // TODO correct hxfMapRemove to avoid a freeze when exiting the application.
+        // The bug seems to happened when free the iterator value then remove the map element.
+        // So for now, the map is manually cleaned.
+
+        HxfMapElement* next = iterator->next;
+        void* value = iterator->value;
+        hxfFree(iterator);
+        hxfFree(value);
+        iterator = next;
+    }
+}
+
+int hxfWorldUpdatePiece(HxfWorld* restrict world, const HxfVec3* restrict position) {
+    int wasUpdated = 0;
+
+    const HxfIvec3 worldPiecePosition = hxfWorldGetPiecePositionF(position);
+    const int32_t minX = worldPiecePosition.x - HXF_HORIZONTAL_VIEW_DISTANCE / 2;
+    const int32_t maxX = worldPiecePosition.x + HXF_HORIZONTAL_VIEW_DISTANCE / 2;
+    const int32_t minZ = worldPiecePosition.z - HXF_HORIZONTAL_VIEW_DISTANCE / 2;
+    const int32_t maxZ = worldPiecePosition.z + HXF_HORIZONTAL_VIEW_DISTANCE / 2;
+
+    // Remove the world piece that are out of the view distance
+
+    HxfMapElement* iterator = world->pieces.start;
+    void* toRemove[HXF_HORIZONTAL_VIEW_DISTANCE * HXF_VERTICAL_VIEW_DISTANCE * 2];
+    int i = 0;
+
+    while (iterator != NULL) {
+        HxfIvec3* position = (HxfIvec3*)iterator->key;
+
+        if (position->x < minX || position->x >= maxX || position->z < minZ || position->z >= maxZ) {
+            toRemove[i] = iterator->key;
+            i++;
+        }
+        iterator = iterator->next;
+    }
+
+    if (i != 0) {
+        wasUpdated = 1;
+        for (int j = 0; j != i; j++) {
+            void* value = hxfMapGet(&world->pieces, toRemove[j])->value;
+            hxfMapRemove(&world->pieces, toRemove[j]);
+            hxfFree(value);
+        }
+    }
+
+    // Add the new world piece
+
+    for (int32_t x = minX; x != maxX; x++) {
+        for (int32_t z = minZ; z != maxZ; z++) {
+            const HxfIvec3 position = { x, 0, z };
+            if (hxfMapGet(&world->pieces, &position) == NULL) {
+                HxfWorldPiece* piece = loadWorldPiece(world->directoryPath, &position);
+                hxfMapSet(&world->pieces, &piece->position, piece);
+                wasUpdated = 1;
+            }
+        }
+    }
+
+    return wasUpdated;
 }
