@@ -138,13 +138,16 @@ typedef struct HxfDrawingData {
  * @brief Contains the objects that are needed to use the Vulkan API.
  */
 typedef struct HxfGraphicsHandler {
-    const char* const appdataDirectory; ///< The appdata directory that contains all the files needed.
-    const HxfKeyboardState* keyboardState; ///< The keyboard state
-    const HxfCamera* camera; ///< The player’s camera
-    const HxfWorld* world; ///< The world made of cubes
+    const char* const appdataDirectory; ///< A reference to the appdata directory that contains all the needed files.
+    const HxfKeyboardState* keyboardState; ///< A reference to the keyboard state
+    const HxfCamera* camera; ///< A reference to the player’s camera
+    const HxfWorld* world; ///< A reference to the world.
 
     HxfWindow* mainWindow; ///< The main window
     VkSurfaceKHR mainWindowSurface; ///< The VkSurfaceKHR of the main window.
+
+    VkDeviceMemory hostMemory; ///< Memory that is available for the host
+    VkDeviceMemory deviceMemory; ///< Memory that is available for the device only.
 
     HxfDrawingData drawingData; ///< The drawing data.
 
@@ -195,16 +198,12 @@ typedef struct HxfGraphicsHandler {
     VkSemaphore nextImageAvailableSemaphores[HXF_MAX_RENDERED_FRAMES]; ///< Indicates when the next image of the swapchain is available.
     VkSemaphore nextImageSubmitedSemaphores[HXF_MAX_RENDERED_FRAMES]; ///< Indicates when the next image of the swapchain was submitted to the queue.
     VkFence imageRenderedFences[HXF_MAX_RENDERED_FRAMES]; ///< Indicates when the image has been rendered.
-
     /**
      * @brief Fence that can be used for anything.
      *
      * It is used when transfering data from one buffer to another.
      */
     VkFence fence;
-
-    VkDeviceMemory hostMemory; ///< Memory that is available for the host
-    VkDeviceMemory deviceMemory; ///< Memory that is available for the device only.
 
     uint32_t currentFrame; ///< The index of the frame that is currently rendered
 } HxfGraphicsHandler;
@@ -220,16 +219,16 @@ void hxfGraphicsInit(HxfGraphicsHandler* restrict graphics);
 void hxfGraphicsDestroy(HxfGraphicsHandler* restrict graphics);
 
 /**
- * @brief Run a single frame of the graphics handler.
- */
-void hxfGraphicsFrame(HxfGraphicsHandler* restrict graphics);
-
-/**
  * @brief Stop the graphics handler.
  *
  * End all processing then return.
  */
 void hxfGraphicsStop(HxfGraphicsHandler* restrict graphics);
+
+/**
+ * @brief Run a single frame of the graphics handler.
+ */
+void hxfGraphicsFrame(HxfGraphicsHandler* restrict graphics);
 
 /**
  * @brief Update the buffer that contains the cubes data.

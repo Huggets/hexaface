@@ -9,6 +9,7 @@
 #include <vulkan/vulkan.h>
 #include "hxf.h"
 #include "input.h"
+#include <stdint.h>
 
 /**
  * @brief The number of keydown and keyup callback of a window.
@@ -39,9 +40,9 @@ HxfResult hxfCreateMainWindow(const HxfWindowParam* restrict param, HxfWindow* r
 
 /**
  * @brief Destroy the window.
- * 
+ *
  * @param window The window to destroy
- * 
+ *
  * @return HXF_ERROR if it fails, HXF_SUCCESS otherwise.
  */
 HxfResult hxfDestroyMainWindow(HxfWindow* restrict window);
@@ -71,7 +72,7 @@ void hxfCreateWindowSurface(HxfWindow* restrict window, VkInstance instance, VkS
  * contains the required extensions.
  * @param count A pointer to an int that will contains the number of extensions.
  */
-void hxfGetRequiredWindowExtensions(char*** extensions, int* count);
+void hxfGetRequiredWindowExtensions(char*** extensions, uint32_t* count);
 
 /**
  * @brief Set the callback function that will be called when the key is pressed down.

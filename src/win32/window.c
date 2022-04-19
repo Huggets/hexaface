@@ -100,7 +100,7 @@ void hxfCreateWindowSurface(HxfWindow* restrict window, VkInstance instance, VkS
     }
 }
 
-void hxfGetRequiredWindowExtensions(char*** extensions, int* count) {
+void hxfGetRequiredWindowExtensions(char*** extensions, uint32_t* count) {
     *extensions = hxfMalloc(2 * sizeof(char*));
     (*extensions)[0] = "VK_KHR_surface";
     (*extensions)[1] = "VK_KHR_win32_surface";

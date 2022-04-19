@@ -1,9 +1,5 @@
 #include "pipeline.h"
 
-/*
-STATIC FORWARD DECLARATION
-*/
-
 /**
  * @brief Create a VkShaderModule from a file.
  *
@@ -12,48 +8,30 @@ STATIC FORWARD DECLARATION
  *
  * @return The VkShaderModule.
  */
-static VkShaderModule createShaderModule(HxfGraphicsHandler* restrict engine, const char* filename);
-
-/**
- * @brief Create the render pass.
- *
- * @param engine The HxfGraphicsHandler that will own it.
- */
-static void createRenderPass(HxfGraphicsHandler* restrict engine);
-
-/**
- * @brief Create the descriptors.
- *
- * @param engine The HxfGraphicsHandler that own them.
- */
-static void createDescriptors(HxfGraphicsHandler* restrict engine);
-
-/*
-IMPLEMENTATION
-*/
-
 static VkShaderModule createShaderModule(HxfGraphicsHandler* restrict engine, const char* filename) {
     VkShaderModule shaderModule;
     void* code;
     size_t codeSize;
 
-    if (hxfReadFile(filename, &code, &codeSize) == HXF_ERROR) {
-        HXF_FATAL("Could not open a shader file");
-    }
+    if (hxfReadFile(filename, &code, &codeSize) == HXF_ERROR) { HXF_FATAL("Could not open a shader file"); }
 
-    VkShaderModuleCreateInfo info = {
+    VkShaderModuleCreateInfo moduleInfo = {
         .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
         .pCode = code,
         .codeSize = codeSize
     };
-
-    HXF_TRY_VK(vkCreateShaderModule(engine->device, &info, NULL, &shaderModule));
+    HXF_TRY_VK(vkCreateShaderModule(engine->device, &moduleInfo, NULL, &shaderModule));
 
     hxfFree(code);
 
     return shaderModule;
 }
 
+/**
+ * @brief Create the render pass.
+ *
+ * @param engine The HxfGraphicsHandler that will own it.
+ */
 static void createRenderPass(HxfGraphicsHandler* restrict engine) {
     VkAttachmentDescription attachmentDescriptions[] = {
         {
@@ -112,10 +90,14 @@ static void createRenderPass(HxfGraphicsHandler* restrict engine) {
         .dependencyCount = 1,
         .pDependencies = &dependency,
     };
-
     HXF_TRY_VK(vkCreateRenderPass(engine->device, &renderPassInfo, NULL, &engine->renderPass));
 }
 
+/**
+ * @brief Create the descriptors.
+ *
+ * @param engine The HxfGraphicsHandler that own them.
+ */
 static void createDescriptors(HxfGraphicsHandler* restrict engine) {
     // Descriptor set layouts
 
@@ -227,7 +209,7 @@ static void createDescriptors(HxfGraphicsHandler* restrict engine) {
             .imageView = engine->drawingData.textureImageView,
             .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
         };
-        VkWriteDescriptorSet cubeWriteDescriptorSets[] = {
+        VkWriteDescriptorSet writeDescriptorSets[] = {
             // Cube
             {
                 .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
@@ -258,7 +240,7 @@ static void createDescriptors(HxfGraphicsHandler* restrict engine) {
                 .pImageInfo = &textureImageInfo
             }
         };
-        vkUpdateDescriptorSets(engine->device, sizeof(cubeWriteDescriptorSets) / sizeof(VkWriteDescriptorSet), cubeWriteDescriptorSets, 0, NULL);
+        vkUpdateDescriptorSets(engine->device, sizeof(writeDescriptorSets) / sizeof(VkWriteDescriptorSet), writeDescriptorSets, 0, NULL);
     }
 }
 
@@ -477,8 +459,7 @@ void createPipelines(HxfGraphicsHandler* restrict engine) {
 
     VkRect2D scissors = {
         .extent = engine->swapchainExtent,
-        .offset.x = 0,
-        .offset.y = 0,
+        .offset = { 0, 0 }
     };
 
     VkPipelineViewportStateCreateInfo viewportInfo = {
