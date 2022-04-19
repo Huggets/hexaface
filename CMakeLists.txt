@@ -58,4 +58,5 @@ if(WIN32) # Compile for windows
     target_compile_definitions(hexaface PRIVATE HXF_WIN32)
     target_link_directories(hexaface PRIVATE lib)
     target_link_libraries(hexaface vulkan-1)
+    target_link_options(hexaface PRIVATE -Wl,-Bstatic -lwinpthread)
 endif()
