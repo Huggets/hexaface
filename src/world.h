@@ -13,8 +13,8 @@
  *
  */
 #define HXF_WORLD_PIECE_CUBE_COUNT HXF_WORLD_PIECE_SIZE * HXF_WORLD_PIECE_SIZE * HXF_WORLD_PIECE_SIZE
-#define HXF_HORIZONTAL_VIEW_DISTANCE 8 // Must be even
-#define HXF_VERTICAL_VIEW_DISTANCE 1   // Must be even
+#define HXF_HORIZONTAL_VIEW_DISTANCE 16 // Must be even
+#define HXF_VERTICAL_VIEW_DISTANCE 1   // Must be even, not used for now
 
 /**
  * @brief A piece of the world.

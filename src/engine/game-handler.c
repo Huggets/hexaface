@@ -117,16 +117,19 @@ void hxfGameStop(HxfGameData* restrict game) {
 }
 
 void hxfGameFrame(HxfGameData* restrict game) {
+    // Update the pointer
     hxfUpdatePointedCube(&game->camera, &game->world);
+
+    // Update the world’s pieces
     if (hxfWorldUpdatePiece(&game->world, &game->camera.position)) {
+        // Update the faces to draw if pieces were removed/added
         updateDrawnFaces(game);
         hxfGraphicsUpdateCubeBuffer(game->graphics);
     }
 }
 
 void hxfReplaceCube(HxfGameData* restrict game, const HxfIvec3* restrict position, uint32_t textureIndex) {
-    // Otherwise replace the cube (it just means change its texture),
-    // and update the drawn faces
+    // Replace the cube if it is inside a world piece that is loaded
 
     HxfIvec3 cubeRelativePosition = hxfWorldGetPiecePositionI(position);
     HxfMapElement* worldPieceElement = hxfMapGet(&game->world.pieces, &cubeRelativePosition);

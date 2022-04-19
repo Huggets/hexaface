@@ -37,7 +37,7 @@ static void mainLoop(HxfAppData* restrict app) {
 
 void hxfAppStart(const HxfAppParam* restrict param) {
     const int halfWindowHeight = param->windowHeight / 2;
-    const int selectorCubeSize = 100.0f;
+    const int selectorCubeSize = 100.0f; ///< Size of the selector cube icon (in pixels).
 
     // Set the default app data
 
@@ -100,7 +100,7 @@ void hxfAppStart(const HxfAppParam* restrict param) {
             .mvp = {
                 .model = HXF_MAT4_IDENTITY,
                 .view = HXF_MAT4_IDENTITY,
-                .projection = hxfPerspectiveProjectionMatrix(0.01f, 128.0f, M_PI / 180.0f * 60.0f, (float)param->windowWidth / (float)param->windowHeight)
+                .projection = hxfPerspectiveProjectionMatrix(0.01f, (float)HXF_HORIZONTAL_VIEW_DISTANCE * 16.0f * 0.5f, M_PI / 180.0f * 60.0f, (float)param->windowWidth / (float)param->windowHeight)
             },
             .iconVertices = {
                 { { 0.0f - selectorCubeSize / 2, halfWindowHeight - selectorCubeSize }, { 0.0f / TEXTURE_WIDTH, 0.0f / TEXTURE_HEIGHT } },
