@@ -114,7 +114,6 @@ void hxfAppStart(const HxfAppParam* restrict param) {
             .iconInstances = {
                 { 1 }
             },
-            .cubeInstances = hxfMalloc(HXF_CUBE_INSTANCES_SIZE)
         },
     };
 
@@ -145,6 +144,4 @@ void hxfAppStart(const HxfAppParam* restrict param) {
     hxfGameStop(&app.game);
     hxfGraphicsDestroy(&app.graphics);
     hxfDestroyMainWindow(&app.mainWindow);
-
-    hxfFree(app.graphics.drawingData.cubeInstances);
 }

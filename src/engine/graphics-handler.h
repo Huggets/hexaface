@@ -90,7 +90,7 @@ typedef struct HxfDrawingData {
     VkFormat depthImageFormat; ///< The format of the depth image
 
     HxfCubeVertexData cubesVertices[HXF_CUBE_VERTEX_DATA_COUNT];
-    HxfCubeInstanceData* cubeInstances; ///< Data for each cubes faces (6 * HXF_CUBE_INSTANCE_COUNT)
+    HxfCubeInstanceData* cubeInstances; ///< Data for each cubes faces
     uint32_t cubesVertexIndices[HXF_CUBE_VERTEX_INDEX_COUNT];
 
     HxfIconVertexData iconVertices[HXF_ICON_VERTEX_DATA_COUNT];
@@ -148,6 +148,7 @@ typedef struct HxfGraphicsHandler {
 
     VkDeviceMemory hostMemory; ///< Memory that is available for the host
     VkDeviceMemory deviceMemory; ///< Memory that is available for the device only.
+    void* hostMemoryPointer; ///< A pointer to the start of the host memory.
 
     HxfDrawingData drawingData; ///< The drawing data.
 

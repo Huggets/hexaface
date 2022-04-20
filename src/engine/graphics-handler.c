@@ -783,6 +783,7 @@ static void allocateMemory(HxfGraphicsHandler* restrict graphics, const TextureI
     const VkDeviceSize textureImageSize = textureInfo->width * textureInfo->height * textureInfo->channels;
     VkDeviceSize deviceBufferSizeRequired;
     VkDeviceSize deviceBufferDataSize;
+    VkDeviceSize hostBufferDataSize;
     VkDeviceSize hostMemorySize;   ///< The total size of the host memory
     VkDeviceSize deviceMemorySize; //< The total size of the device memory
 
@@ -827,16 +828,6 @@ static void allocateMemory(HxfGraphicsHandler* restrict graphics, const TextureI
     drawingData->cubesVertexIndicesSize = sizeof(drawingData->cubesVertexIndices);
     memoryOffset = drawingData->cubesVertexIndicesOffset + drawingData->cubesVertexIndicesSize;
 
-    // Cube instance
-    drawingData->cubeInstancesOffset = memoryOffset;
-    drawingData->cubeInstancesSize = HXF_CUBE_INSTANCES_SIZE;
-    memoryOffset = drawingData->cubeInstancesOffset + drawingData->cubeInstancesSize;
-
-    // Pointed cube
-    drawingData->pointedCubeOffset = memoryOffset;
-    drawingData->pointedCubeSize = sizeof(HxfCubeInstanceData);
-    memoryOffset = drawingData->pointedCubeOffset + drawingData->pointedCubeSize;
-
     // Icon vertex data
     drawingData->iconVerticesOffset = memoryOffset;
     drawingData->iconVerticesSize = sizeof(drawingData->iconVertices);
@@ -847,25 +838,18 @@ static void allocateMemory(HxfGraphicsHandler* restrict graphics, const TextureI
     drawingData->iconVertexIndicesSize = sizeof(drawingData->iconVertexIndices);
     memoryOffset = drawingData->iconVertexIndicesOffset + drawingData->iconVertexIndicesSize;
 
-    // Icon instance data
-    drawingData->iconInstancesOffset = memoryOffset;
-    drawingData->iconInstancesSize = sizeof(drawingData->iconInstances);
-    memoryOffset = drawingData->iconInstancesOffset + drawingData->iconInstancesSize;
-
     // Buffer creation
+    deviceBufferDataSize = memoryOffset - drawingData->deviceBufferOffset;
     bufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-    bufferInfo.size = memoryOffset - drawingData->deviceBufferOffset;
+    bufferInfo.size = deviceBufferDataSize;
     HXF_TRY_VK(vkCreateBuffer(graphics->device, &bufferInfo, NULL, &drawingData->deviceBuffer));
     vkGetBufferMemoryRequirements(graphics->device, drawingData->deviceBuffer, &memoryRequirements);
-    deviceBufferDataSize = bufferInfo.size;
 
     VkDeviceSize* deviceBufferOffsets[] = {
         &drawingData->cubesVerticesOffset,
         &drawingData->cubesVertexIndicesOffset,
-        &drawingData->cubeInstancesOffset,
-        &drawingData->pointedCubeOffset,
         &drawingData->iconVerticesOffset,
-        &drawingData->iconInstancesOffset
+        &drawingData->iconVertexIndicesOffset,
     };
     alignBuffer(&memoryRequirements, &drawingData->deviceBufferOffset, deviceBufferOffsets, sizeof(deviceBufferOffsets) / sizeof(VkDeviceSize*));
     deviceBufferSizeRequired = memoryRequirements.size;
@@ -890,14 +874,34 @@ static void allocateMemory(HxfGraphicsHandler* restrict graphics, const TextureI
     drawingData->mvpSize = sizeof(drawingData->mvp);
     memoryOffset = drawingData->mvpOffset + drawingData->mvpSize;
 
+    // Cube instance
+    drawingData->cubeInstancesOffset = memoryOffset;
+    // the size should be 6 * HXF_CUBE_INSTANCES_SIZE in theory, but this should be enough. TODO verify this
+    drawingData->cubeInstancesSize = HXF_CUBE_INSTANCES_SIZE;
+    memoryOffset = drawingData->cubeInstancesOffset + drawingData->cubeInstancesSize;
+
+    // Pointed cube
+    drawingData->pointedCubeOffset = memoryOffset;
+    drawingData->pointedCubeSize = sizeof(HxfCubeInstanceData);
+    memoryOffset = drawingData->pointedCubeOffset + drawingData->pointedCubeSize;
+
+    // Icon instance data
+    drawingData->iconInstancesOffset = memoryOffset;
+    drawingData->iconInstancesSize = sizeof(drawingData->iconInstances);
+    memoryOffset = drawingData->iconInstancesOffset + drawingData->iconInstancesSize;
+
     // Host buffer
-    bufferInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
-    bufferInfo.size = memoryOffset - drawingData->hostBufferOffset;
+    hostBufferDataSize = memoryOffset - drawingData->hostBufferOffset;
+    bufferInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+    bufferInfo.size = hostBufferDataSize;
     HXF_TRY_VK(vkCreateBuffer(graphics->device, &bufferInfo, NULL, &drawingData->hostBuffer));
     vkGetBufferMemoryRequirements(graphics->device, drawingData->hostBuffer, &memoryRequirements);
 
     VkDeviceSize* hostBufferOffsets[] = {
-        &drawingData->mvpOffset
+        &drawingData->mvpOffset,
+        &drawingData->cubeInstancesOffset,
+        &drawingData->pointedCubeOffset,
+        &drawingData->iconInstancesOffset
     };
     alignBuffer(&memoryRequirements, &drawingData->hostBufferOffset, hostBufferOffsets, sizeof(hostBufferOffsets) / sizeof(VkDeviceSize*));
     memoryOffset = drawingData->hostBufferOffset + memoryRequirements.size;
@@ -940,16 +944,16 @@ static void allocateMemory(HxfGraphicsHandler* restrict graphics, const TextureI
 
     // Transfer the device buffers data, from the host to the device memory
 
-    void* data;
-    HXF_TRY_VK(vkMapMemory(graphics->device, graphics->hostMemory, drawingData->transferBufferOffset, deviceBufferDataSize, 0, &data));
-    data -= drawingData->deviceBufferOffset; // Start from 0 instead of using the device memory offset
-    memcpy(data + drawingData->cubesVerticesOffset, drawingData->cubesVertices, drawingData->cubesVerticesSize);
-    memcpy(data + drawingData->cubesVertexIndicesOffset, drawingData->cubesVertexIndices, drawingData->cubesVertexIndicesSize);
-    memcpy(data + drawingData->cubeInstancesOffset, drawingData->cubeInstances, drawingData->cubeInstancesSize);
-    memcpy(data + drawingData->iconVerticesOffset, drawingData->iconVertices, drawingData->iconVerticesSize);
-    memcpy(data + drawingData->iconVertexIndicesOffset, drawingData->iconVertexIndices, drawingData->iconVertexIndicesSize);
-    memcpy(data + drawingData->iconInstancesOffset, drawingData->iconInstances, drawingData->iconInstancesSize);
-    vkUnmapMemory(graphics->device, graphics->hostMemory);
+    void* transferBufferPointer;
+    void* transferBufferDeviceDeviceRelativePointer;
+
+    HXF_TRY_VK(vkMapMemory(graphics->device, graphics->hostMemory, 0, VK_WHOLE_SIZE, 0, &graphics->hostMemoryPointer));
+    transferBufferPointer = graphics->hostMemoryPointer + drawingData->transferBufferOffset;
+    transferBufferDeviceDeviceRelativePointer = transferBufferPointer - drawingData->deviceBufferOffset;
+    memcpy(transferBufferDeviceDeviceRelativePointer + drawingData->cubesVerticesOffset, drawingData->cubesVertices, drawingData->cubesVerticesSize);
+    memcpy(transferBufferDeviceDeviceRelativePointer + drawingData->cubesVertexIndicesOffset, drawingData->cubesVertexIndices, drawingData->cubesVertexIndicesSize);
+    memcpy(transferBufferDeviceDeviceRelativePointer + drawingData->iconVerticesOffset, drawingData->iconVertices, drawingData->iconVerticesSize);
+    memcpy(transferBufferDeviceDeviceRelativePointer + drawingData->iconVertexIndicesOffset, drawingData->iconVertexIndices, drawingData->iconVertexIndicesSize);
 
     transferBuffers(graphics, drawingData->transferBuffer, drawingData->deviceBuffer, 0, 0, deviceBufferDataSize);
 
@@ -959,9 +963,7 @@ static void allocateMemory(HxfGraphicsHandler* restrict graphics, const TextureI
 
     // Write the texture in memory
 
-    HXF_TRY_VK(vkMapMemory(graphics->device, graphics->hostMemory, drawingData->transferBufferOffset, textureImageSize, 0, &data));
-    memcpy(data, textureInfo->pixels, textureImageSize);
-    vkUnmapMemory(graphics->device, graphics->hostMemory);
+    memcpy(transferBufferPointer, textureInfo->pixels, textureImageSize);
 
     // Record a command buffer that will transition the image and transfer the texture in an image
 
@@ -1048,9 +1050,13 @@ static void allocateMemory(HxfGraphicsHandler* restrict graphics, const TextureI
 
     // Write the host memory data that is actually needed
 
-    HXF_TRY_VK(vkMapMemory(graphics->device, graphics->hostMemory, 0, drawingData->mvpSize, 0, &data));
-    memcpy(data, &drawingData->mvp, drawingData->mvpSize);
-    vkUnmapMemory(graphics->device, graphics->hostMemory);
+    memcpy(graphics->hostMemoryPointer + drawingData->mvpOffset, &drawingData->mvp, drawingData->mvpSize);
+    memcpy(graphics->hostMemoryPointer + drawingData->iconInstancesOffset, drawingData->iconInstances, drawingData->iconInstancesSize);
+
+    // Get the pointer to the cube instances data and update the content
+
+    graphics->drawingData.cubeInstances = graphics->hostMemoryPointer + drawingData->cubeInstancesOffset;
+    hxfGraphicsUpdateCubeBuffer(graphics);
 }
 
 /**
@@ -1112,13 +1118,13 @@ static void recordDrawCommandBuffer(HxfGraphicsHandler* restrict graphics, uint3
         0, 1, &graphics->cubeDescriptorSets[currentFrameIndex],
         0, NULL
     );
-    VkBuffer boundBuffers[] = {
+    VkBuffer boundBuffers[2] = {
         graphics->drawingData.deviceBuffer,
-        graphics->drawingData.deviceBuffer
+        graphics->drawingData.hostBuffer
     };
-    VkDeviceSize offsets[] = {
+    VkDeviceSize offsets[2] = {
         graphics->drawingData.cubesVerticesOffset - graphics->drawingData.deviceBufferOffset,
-        graphics->drawingData.cubeInstancesOffset - graphics->drawingData.deviceBufferOffset
+        graphics->drawingData.cubeInstancesOffset - graphics->drawingData.hostBufferOffset
     };
     vkCmdBindVertexBuffers(graphics->drawCommandBuffers[currentFrameIndex], 0, 2, boundBuffers, offsets);
     vkCmdBindIndexBuffer(graphics->drawCommandBuffers[currentFrameIndex], graphics->drawingData.deviceBuffer, graphics->drawingData.cubesVertexIndicesOffset - graphics->drawingData.deviceBufferOffset, VK_INDEX_TYPE_UINT32);
@@ -1150,7 +1156,7 @@ static void recordDrawCommandBuffer(HxfGraphicsHandler* restrict graphics, uint3
         0, NULL
     );
     offsets[0] = graphics->drawingData.iconVerticesOffset - graphics->drawingData.deviceBufferOffset;
-    offsets[1] = graphics->drawingData.iconInstancesOffset - graphics->drawingData.deviceBufferOffset;
+    offsets[1] = graphics->drawingData.iconInstancesOffset - graphics->drawingData.hostBufferOffset;
     vkCmdBindVertexBuffers(graphics->drawCommandBuffers[currentFrameIndex], 0, 2, boundBuffers, offsets);
     vkCmdBindIndexBuffer(graphics->commandBuffers[currentFrameIndex], graphics->drawingData.deviceBuffer, graphics->drawingData.iconVertexIndicesOffset - graphics->drawingData.deviceBufferOffset, VK_INDEX_TYPE_UINT32);
     HxfIconPushConstantData iconPushConstant = {
@@ -1164,8 +1170,8 @@ static void recordDrawCommandBuffer(HxfGraphicsHandler* restrict graphics, uint3
 
     vkCmdBindPipeline(graphics->drawCommandBuffers[currentFrameIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, graphics->pointerPipeline);
     HxfPointerPushConstantData HxfPointerPushConstantData = {
-        graphics->mainWindow->width,
-        graphics->mainWindow->height
+        iconPushConstant.windowWidth,
+        iconPushConstant.windowHeight
     };
     vkCmdPushConstants(graphics->drawCommandBuffers[currentFrameIndex], graphics->pointerPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(HxfPointerPushConstantData), &iconPushConstant);
     vkCmdDraw(graphics->drawCommandBuffers[currentFrameIndex], HXF_POINTER_VERTEX_COUNT, 1, 0, 0);
@@ -1184,11 +1190,7 @@ static void updateMvpBuffer(HxfGraphicsHandler* restrict graphics) {
     // Update the view matrix according to the camera
 
     graphics->drawingData.mvp.view = hxfViewMatrix(&graphics->camera->position, &graphics->camera->direction, &graphics->camera->up);
-
-    void* data;
-    HXF_TRY_VK(vkMapMemory(graphics->device, graphics->hostMemory, graphics->drawingData.mvpOffset, graphics->drawingData.mvpSize, 0, &data));
-    memcpy(data, &graphics->drawingData.mvp, graphics->drawingData.mvpSize);
-    vkUnmapMemory(graphics->device, graphics->hostMemory);
+    memcpy(graphics->hostMemoryPointer + graphics->drawingData.mvpOffset, &graphics->drawingData.mvp, graphics->drawingData.mvpSize);
 }
 
 /**
@@ -1197,20 +1199,15 @@ static void updateMvpBuffer(HxfGraphicsHandler* restrict graphics) {
  * @param graphics A pointer to the HxfGraphicsHandler that hold them.
  */
 static void updatePointedCubeBuffer(HxfGraphicsHandler* restrict graphics) {
-    void* data;
-    HXF_TRY_VK(vkMapMemory(graphics->device, graphics->hostMemory, graphics->drawingData.transferBufferOffset, graphics->drawingData.pointedCubeSize, 0, &data));
     const HxfCubeInstanceData pointedCube = {
         {
-            (float)graphics->camera->nearPointedCube.x,
-            (float)graphics->camera->nearPointedCube.y,
-            (float)graphics->camera->nearPointedCube.z
+            graphics->camera->nearPointedCube.x,
+            graphics->camera->nearPointedCube.y,
+            graphics->camera->nearPointedCube.z
         },
         0
     };
-    memcpy(data, &pointedCube, sizeof(pointedCube));
-    vkUnmapMemory(graphics->device, graphics->hostMemory);
-
-    transferBuffers(graphics, graphics->drawingData.transferBuffer, graphics->drawingData.deviceBuffer, 0, graphics->drawingData.pointedCubeOffset - graphics->drawingData.deviceBufferOffset, sizeof(pointedCube));
+    memcpy(graphics->hostMemoryPointer + graphics->drawingData.pointedCubeOffset, &pointedCube, sizeof(pointedCube));
 }
 
 void hxfGraphicsInit(HxfGraphicsHandler* restrict graphics) {
@@ -1334,20 +1331,83 @@ void hxfGraphicsFrame(HxfGraphicsHandler* restrict graphics) {
     graphics->currentFrame = (graphics->currentFrame + 1) % HXF_MAX_RENDERED_FRAMES;
 }
 
-void hxfGraphicsUpdateCubeBuffer(HxfGraphicsHandler* restrict graphics) {
-    void* data;
-    HXF_TRY_VK(vkMapMemory(graphics->device, graphics->hostMemory, graphics->drawingData.transferBufferOffset, graphics->drawingData.cubeInstancesSize, 0, &data));
-    memcpy(data, graphics->drawingData.cubeInstances, graphics->drawingData.cubeInstancesSize);
-    vkUnmapMemory(graphics->device, graphics->hostMemory);
+/**
+ * @brief Append a new cube’s face that will be drawn.
+ *
+ * @param face A pointer to an array of faces where the face will be added.
+ * @param position The position of the new face in the world.
+ * @param textureIndex The texture index of the face.
+ * @param index The index of the new face. It is incremented after the cube is added.
+ */
+static void addDrawnFace(HxfCubeInstanceData* restrict faces, const HxfVec3* restrict position, uint32_t textureIndex, size_t* index) {
+    faces->position = *position;
+    faces->textureIndex = textureIndex;
+    (*index)++;
+}
 
-    transferBuffers(graphics, graphics->drawingData.transferBuffer, graphics->drawingData.deviceBuffer, 0, graphics->drawingData.cubeInstancesOffset - graphics->drawingData.deviceBufferOffset, graphics->drawingData.cubeInstancesSize);
+void hxfGraphicsUpdateCubeBuffer(HxfGraphicsHandler* restrict graphics) {
+    HxfDrawingData* const drawingData = &graphics->drawingData;
+
+    // Reset all the faces. No faces are drawn.
+
+    drawingData->faceTopCount = 0;
+    drawingData->faceBottomCount = 0;
+    drawingData->faceFrontCount = 0;
+    drawingData->faceBackCount = 0;
+    drawingData->faceRightCount = 0;
+    drawingData->faceLeftCount = 0;
+
+    // Select the faces that are not hidden by other cubes.
+    HxfMapElement* iterator = graphics->world->pieces.start;
+    while (iterator != NULL) { // For each world piece.
+        for (int x = 0; x != HXF_WORLD_PIECE_SIZE; x++) {
+            for (int y = 0; y != HXF_WORLD_PIECE_SIZE; y++) {
+                for (int z = 0; z != HXF_WORLD_PIECE_SIZE; z++) {
+                    HxfWorldPiece* const worldPiece = (HxfWorldPiece*)iterator->value;
+                    HxfIvec3* const worldPiecePosition = (HxfIvec3*)iterator->key;
+
+                    const uint32_t textureId = worldPiece->cubes[x][y][z];
+                    const HxfVec3 position = { x + worldPiecePosition->x * HXF_WORLD_PIECE_SIZE, y + worldPiecePosition->y * HXF_WORLD_PIECE_SIZE, z + worldPiecePosition->z * HXF_WORLD_PIECE_SIZE };
+
+                    if (textureId != 0) {
+                        if ((x != HXF_WORLD_PIECE_SIZE - 1 && worldPiece->cubes[x + 1][y][z] == 0)
+                            || x == HXF_WORLD_PIECE_SIZE - 1) {
+                            size_t* index = &drawingData->faceRightCount;
+                            addDrawnFace(&drawingData->cubeInstances[HXF_FACES_RIGHT_OFFSET + *index], &position, textureId, index);
+                        }
+                        if ((x != 0 && worldPiece->cubes[x - 1][y][z] == 0)
+                            || x == 0) {
+                            size_t* index = &drawingData->faceLeftCount;
+                            addDrawnFace(&drawingData->cubeInstances[HXF_FACES_LEFT_OFFSET + *index], &position, textureId, index);
+                        }
+                        if ((y != HXF_WORLD_PIECE_SIZE - 1 && worldPiece->cubes[x][y + 1][z] == 0)
+                            || y == HXF_WORLD_PIECE_SIZE - 1) {
+                            size_t* index = &drawingData->faceTopCount;
+                            addDrawnFace(&drawingData->cubeInstances[HXF_FACES_TOP_OFFSET + *index], &position, textureId, index);
+                        }
+                        if ((y != 0 && worldPiece->cubes[x][y - 1][z] == 0)
+                            || y == 0) {
+                            size_t* index = &drawingData->faceBottomCount;
+                            addDrawnFace(&drawingData->cubeInstances[HXF_FACES_BOTTOM_OFFSET + *index], &position, textureId, index);
+                        }
+                        if ((z != HXF_WORLD_PIECE_SIZE - 1 && worldPiece->cubes[x][y][z + 1] == 0)
+                            || z == HXF_WORLD_PIECE_SIZE - 1) {
+                            size_t* index = &drawingData->faceFrontCount;
+                            addDrawnFace(&drawingData->cubeInstances[HXF_FACES_FRONT_OFFSET + *index], &position, textureId, index);
+                        }
+                        if ((z != 0 && worldPiece->cubes[x][y][z - 1] == 0)
+                            || z == 0) {
+                            size_t* index = &drawingData->faceBackCount;
+                            addDrawnFace(&drawingData->cubeInstances[HXF_FACES_BACK_OFFSET + *index], &position, textureId, index);
+                        }
+                    }
+                }
+            }
+        }
+        iterator = iterator->next;
+    }
 }
 
 void hxfGraphicsUpdateIconBuffer(HxfGraphicsHandler* restrict graphics) {
-    void* data;
-    HXF_TRY_VK(vkMapMemory(graphics->device, graphics->hostMemory, graphics->drawingData.transferBufferOffset, graphics->drawingData.iconInstancesSize, 0, &data));
-    memcpy(data, graphics->drawingData.iconInstances, graphics->drawingData.iconInstancesSize);
-    vkUnmapMemory(graphics->device, graphics->hostMemory);
-
-    transferBuffers(graphics, graphics->drawingData.transferBuffer, graphics->drawingData.deviceBuffer, 0, graphics->drawingData.iconInstancesOffset - graphics->drawingData.deviceBufferOffset, graphics->drawingData.iconInstancesSize);
+    memcpy(graphics->hostMemoryPointer + graphics->drawingData.iconInstancesOffset, graphics->drawingData.iconInstances, graphics->drawingData.iconInstancesSize);
 }
