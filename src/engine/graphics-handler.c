@@ -1347,6 +1347,7 @@ static void addDrawnFace(HxfCubeInstanceData* restrict faces, const HxfVec3* res
 
 void hxfGraphicsUpdateCubeBuffer(HxfGraphicsHandler* restrict graphics) {
     HxfDrawingData* const drawingData = &graphics->drawingData;
+    HxfWorldPiece** const worldPieces = (HxfWorldPiece**)graphics->world->pieces.table;
 
     // Reset all the faces. No faces are drawn.
 
@@ -1358,16 +1359,15 @@ void hxfGraphicsUpdateCubeBuffer(HxfGraphicsHandler* restrict graphics) {
     drawingData->faceLeftCount = 0;
 
     // Select the faces that are not hidden by other cubes.
-    HxfMapElement* iterator = graphics->world->pieces.start;
-    while (iterator != NULL) { // For each world piece.
+
+    for (int i = 0; i != HXF_HORIZONTAL_VIEW_DISTANCE * HXF_HORIZONTAL_VIEW_DISTANCE * HXF_VERTICAL_VIEW_DISTANCE; i++) { // For each world piece.
         for (int x = 0; x != HXF_WORLD_PIECE_SIZE; x++) {
             for (int y = 0; y != HXF_WORLD_PIECE_SIZE; y++) {
                 for (int z = 0; z != HXF_WORLD_PIECE_SIZE; z++) {
-                    HxfWorldPiece* const worldPiece = (HxfWorldPiece*)iterator->value;
-                    HxfIvec3* const worldPiecePosition = (HxfIvec3*)iterator->key;
+                    HxfWorldPiece* const worldPiece = worldPieces[i];
 
                     const uint32_t textureId = worldPiece->cubes[x][y][z];
-                    const HxfVec3 position = { x + worldPiecePosition->x * HXF_WORLD_PIECE_SIZE, y + worldPiecePosition->y * HXF_WORLD_PIECE_SIZE, z + worldPiecePosition->z * HXF_WORLD_PIECE_SIZE };
+                    const HxfVec3 position = { x + worldPiece->position.x * HXF_WORLD_PIECE_SIZE, y + worldPiece->position.y * HXF_WORLD_PIECE_SIZE, z + worldPiece->position.z * HXF_WORLD_PIECE_SIZE };
 
                     if (textureId != 0) {
                         if ((x != HXF_WORLD_PIECE_SIZE - 1 && worldPiece->cubes[x + 1][y][z] == 0)
@@ -1404,7 +1404,6 @@ void hxfGraphicsUpdateCubeBuffer(HxfGraphicsHandler* restrict graphics) {
                 }
             }
         }
-        iterator = iterator->next;
     }
 }
 

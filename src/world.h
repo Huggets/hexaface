@@ -13,8 +13,8 @@
  *
  */
 #define HXF_WORLD_PIECE_CUBE_COUNT HXF_WORLD_PIECE_SIZE * HXF_WORLD_PIECE_SIZE * HXF_WORLD_PIECE_SIZE
-#define HXF_HORIZONTAL_VIEW_DISTANCE 16 // Must be even
-#define HXF_VERTICAL_VIEW_DISTANCE 1   // Must be even, not used for now
+#define HXF_HORIZONTAL_VIEW_DISTANCE 32 // Must be even
+#define HXF_VERTICAL_VIEW_DISTANCE 1 // Must be even, But it MUST be 1 for now because it is not used.
 
 /**
  * @brief A piece of the world.
@@ -30,8 +30,20 @@ typedef struct HxfWorldPiece {
  * @brief Represent a world that is made of cubes.
  */
 typedef struct HxfWorld {
-    HxfMap pieces;
+    HxfHashMap pieces; ///< A hash map containing the world pieces. (the index is the world piece position)
     char* directoryPath; ///< The path to the directory of the world.
+    /**
+     * @brief The coordinate of the start of the world. No world pieces are outside this corner.
+     *
+     * This is dynamic and change according to the player position.
+     */
+    HxfIvec3 startCorner;
+    /**
+     * @brief The coordinate of the end of the world. No world pieces are outside this corner.
+     *
+     * This is dynamic and change according to the player position.
+     */
+    HxfIvec3 endCorner;
 } HxfWorld;
 
 /**
@@ -45,22 +57,22 @@ typedef struct HxfWorldSavedData {
 } HxfWorldSaveData;
 
 /**
- * @brief Get the world local position from the global position.
+ * @brief Get the world piece position from the global position.
  *
  * @param globalPosition The global position.
  *
  * @return The world piece position.
  */
-HxfIvec3 hxfWorldGetPiecePositionF(const HxfVec3* restrict globalPosition);
+HxfIvec3 hxfWorldPieceGetPositionF(const HxfVec3* restrict globalPosition);
 
 /**
- * @brief Get the world local position from the global position.
+ * @brief Get the world piece position from the global position.
  *
  * @param globalPosition The global position.
  *
  * @return The world piece position.
  */
-HxfIvec3 hxfWorldGetPiecePositionI(const HxfIvec3* restrict globalPosition);
+HxfIvec3 hxfWorldPieceGetPositionI(const HxfIvec3* restrict globalPosition);
 
 /**
  * @brief Get the location of a cube inside its world piece

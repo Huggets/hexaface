@@ -4,6 +4,7 @@
 void hxfUpdatePointedCube(HxfCamera* restrict camera, const HxfWorld* restrict world) {
     const int maxPointingDistance = 5; // Maximum distance at which the block can be selected
     const int precision = 50;
+    const HxfHashMap* const restrict worldPiecesMap = &world->pieces;
 
     int i = 1;
     int cubeNotFound = 1;
@@ -20,11 +21,15 @@ void hxfUpdatePointedCube(HxfCamera* restrict camera, const HxfWorld* restrict w
         floatPosition = hxfVec3Add(&floatPosition, &forward);
         HxfIvec3 intPosition = roundVector(&floatPosition);
 
-        const HxfIvec3 worldPiecePosition = hxfWorldGetPiecePositionF(&floatPosition);
-        HxfMapElement* const worldPieceElement = hxfMapGet(&world->pieces, &worldPiecePosition);
+        const HxfIvec3 worldPiecePosition = hxfWorldPieceGetPositionF(&floatPosition);
 
-        if (worldPieceElement != NULL) {
-            HxfWorldPiece* const worldPiece = (HxfWorldPiece*)worldPieceElement->value;
+        if (
+            worldPiecePosition.x >= world->startCorner.x && worldPiecePosition.x < world->endCorner.x
+            && worldPiecePosition.y == 0
+            && worldPiecePosition.z >= world->startCorner.z && worldPiecePosition.z < world->endCorner.z
+            ) {
+            HxfUvec3 normPos = { worldPiecePosition.x - world->startCorner.x, 0, worldPiecePosition.z - world->startCorner.z };
+            HxfWorldPiece* const worldPiece = hxfHashMapGet(worldPiecesMap, &normPos);
 
             const HxfIvec3 worldPieceRelativePosition = hxfWorldGetLocalPosition(&intPosition);
             if (worldPiece->cubes[worldPieceRelativePosition.x][worldPieceRelativePosition.y][worldPieceRelativePosition.z] != 0) {

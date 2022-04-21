@@ -1,51 +1,71 @@
 #pragma once
 
+#include <stdint.h>
+
 /**
- * @brief Represent a map but also a map element.
+ * @brief A hash map.
+ *
+ * No elements can have the same key. If so, then the previous value is replaced
+ * by the new value.
+ *
+ * A hash function is used to compute the index inside the table.
+ * The table elements are a pointer to their data.
  */
-typedef struct HxfMapElement {
-    void* key; ///< The key of the element. It must not be NULL.
-    void* value; ///< A pointer to the value of the element.
-    struct HxfMapElement* next; ///< A pointer to the address of the next element. NULL if no next element.
-} HxfMapElement;
-
-typedef struct HxfMap {
-    HxfMapElement* start; ///< A pointer to the first element of the map.
+typedef struct HxfHashMap {
     /**
-     * @brief The function called to test if two keys are equals.
+     * @brief The hash table
      *
-     * This is used in the maps function to select the right element.
+     * It’s a pointer to the hash map data that contains the key/value pairs.
      */
-    int (*compareKey)(const void*, const void*);
-} HxfMap;
+    void** table;
+    /**
+     * @brief A pointer to the hash function used in the hash map.
+     *
+     * @return The index associated with the key in the hash map.
+     */
+    uint32_t(*hash)(const void* restrict key);
+} HxfHashMap;
 
 /**
- * @brief Get the map element associated with the given key.
+ * @brief Get the value associated with the given key.
  *
  * @param map The map to search in. Must not be NULL.
  * @param key The key of the element. Must not be NULL.
  *
- * @return A pointer to the map element or NULL if it was not found.
+ * @return The value associated with the key.
  */
-HxfMapElement* hxfMapGet(const HxfMap* map, const void* key);
+void* hxfHashMapGet(const HxfHashMap* restrict map, const void* restrict key);
 
 /**
- * @brief Set the value of the element with the given key.
+ * @brief Get the value associated with the given hash.
  *
- * Create the element if it does not exists. Otherwise update the value.
+ * This works the same as hxfHashMapGet but with the hash already computed
+ * and replacing the key.
+ *
+ * @param map The map to search in. Must ont be NULL.
+ * @param hash The hash of the key.
+ *
+ * @return The value associated with the hash.
+ */
+void* hxfHashMapGetFromHash(const HxfHashMap* restrict map, uint32_t hash);
+
+/**
+ * @brief Put the value with the given key in the hash map.
  *
  * @param map The map that will hold the value. Must not be NULL.
  * @param key The key of the element. Must not be NULL.
  * @param value The value of the element.
  */
-void hxfMapSet(HxfMap* map, void* key, void* value);
+void hxfHashMapPut(HxfHashMap* restrict map, const void* restrict key, void* value);
 
 /**
- * @brief Remove the element of the map.
+ * @brief Put the value associated with the given hash in the hash map.
  *
- * The element must exist in the map.
+ * This is the same as hxfHashMapPut but with the hash already computed and
+ * replacing the key.
  *
- * @param map The map where the element is.
- * @param key The key of the element.
+ * @param map The map that will hold the value. Must not be NULL.
+ * @param key The hash of the element. Must not be NULL.
+ * @param value The value of the element.
  */
-void hxfMapRemove(HxfMap* map, const void* key);
+void hxfHashMapPutFromHash(HxfHashMap* restrict map, uint32_t hash, void* value);

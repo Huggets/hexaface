@@ -1,8 +1,10 @@
 #include "world.h"
 #include "hxf.h"
 #include <math.h>
-#include <stdio.h>
 #include <string.h>
+
+#include <stdio.h>
+#include <time.h>
 
 /* Offset and size of data inside the files */
 
@@ -19,19 +21,25 @@
 
 #define WORLD_INFO_FILE_SIZE WORLD_INFO_POSITION_OFFSET + WORLD_INFO_POSITON_SIZE
 
-/**
- * @brief Compare two HxfIvec3 and return true if they have the same values.
- *
- * @param a HxfIvec3*
- * @param b HxfIvec3*
- *
- * @return 1 if true, 0 otherwise.
- */
-static int worldPieceMapCompareKey(const void* a, const void* b) {
-    const HxfIvec3* const operandA = (HxfIvec3*)a;
-    const HxfIvec3* const operandB = (HxfIvec3*)b;
+#define WORLD_PIECE_COUNT HXF_HORIZONTAL_VIEW_DISTANCE * HXF_HORIZONTAL_VIEW_DISTANCE * HXF_VERTICAL_VIEW_DISTANCE
 
-    return operandA->x == operandB->x && operandA->y == operandB->y && operandA->z == operandB->z;
+/**
+ * @brief The hash function used with the world pieces hash map.
+ *
+ * TODO finish
+ *
+ * @param key HxfUvec3 (the position)
+ *
+ * @return The hash.
+ */
+static uint32_t hashPosition(const void* restrict key) {
+    uint32_t hash = 0;
+
+    hash += (((HxfUvec3*)key)->y * HXF_HORIZONTAL_VIEW_DISTANCE * HXF_HORIZONTAL_VIEW_DISTANCE) % (HXF_VERTICAL_VIEW_DISTANCE * HXF_HORIZONTAL_VIEW_DISTANCE * HXF_HORIZONTAL_VIEW_DISTANCE);
+    hash += (((HxfUvec3*)key)->x * HXF_HORIZONTAL_VIEW_DISTANCE) % (HXF_HORIZONTAL_VIEW_DISTANCE * HXF_HORIZONTAL_VIEW_DISTANCE);
+    hash += ((HxfUvec3*)key)->z % HXF_HORIZONTAL_VIEW_DISTANCE;
+
+    return hash;
 }
 
 /**
@@ -101,7 +109,7 @@ static HxfWorldPiece* loadWorldPiece(const char* restrict worldDirectory, const 
     return worldPiece;
 }
 
-static void saveWorldPiece(const HxfWorldPiece* restrict worldPiece, const char* restrict worldDirectory) {
+static void saveWorldPiece(HxfWorldPiece* restrict worldPiece, const char* restrict worldDirectory) {
     // Get the filename
 
     int size = strlen(worldDirectory);
@@ -131,6 +139,7 @@ static void saveWorldPiece(const HxfWorldPiece* restrict worldPiece, const char*
 
     fclose(file);
     hxfFree(filename);
+    hxfFree(worldPiece);
 }
 
 static void loadWorldInfo(HxfWorldSaveData* restrict data) {
@@ -197,7 +206,7 @@ static void saveWorldInfo(HxfWorldSaveData* restrict data) {
     hxfFree(filename);
 }
 
-HxfIvec3 hxfWorldGetPiecePositionF(const HxfVec3* restrict globalPosition) {
+HxfIvec3 hxfWorldPieceGetPositionF(const HxfVec3* restrict globalPosition) {
     HxfIvec3 localPosition;
 
     if (globalPosition->x < 0) {
@@ -224,7 +233,7 @@ HxfIvec3 hxfWorldGetPiecePositionF(const HxfVec3* restrict globalPosition) {
     return localPosition;
 }
 
-HxfIvec3 hxfWorldGetPiecePositionI(const HxfIvec3* restrict globalPosition) {
+HxfIvec3 hxfWorldPieceGetPositionI(const HxfIvec3* restrict globalPosition) {
     HxfIvec3 localPosition;
 
     if (globalPosition->x < 0) {
@@ -270,22 +279,27 @@ void hxfWorldLoad(HxfWorldSaveData* restrict data) {
 
     // Initialize the world pieces
 
-    HxfMap* const cubesMap = &data->world->pieces;
-    cubesMap->compareKey = worldPieceMapCompareKey;
+    HxfHashMap* const worldPiecesMap = &data->world->pieces;
+    worldPiecesMap->hash = hashPosition;
+    worldPiecesMap->table = hxfMalloc(WORLD_PIECE_COUNT * sizeof(HxfWorldPiece*));
 
     // Load the world pieces around the camera position according to the view distance
 
-    const HxfIvec3 worldPiecePosition = hxfWorldGetPiecePositionF(data->cameraPosition);
-    const int32_t minX = worldPiecePosition.x - HXF_HORIZONTAL_VIEW_DISTANCE / 2;
-    const int32_t maxX = worldPiecePosition.x + HXF_HORIZONTAL_VIEW_DISTANCE / 2;
-    const int32_t minZ = worldPiecePosition.z - HXF_HORIZONTAL_VIEW_DISTANCE / 2;
-    const int32_t maxZ = worldPiecePosition.z + HXF_HORIZONTAL_VIEW_DISTANCE / 2;
+    const HxfIvec3 worldPiecePosition = hxfWorldPieceGetPositionF(data->cameraPosition);
+    data->world->startCorner.x = worldPiecePosition.x - HXF_HORIZONTAL_VIEW_DISTANCE / 2;
+    data->world->startCorner.y = 0;
+    data->world->startCorner.z = worldPiecePosition.z - HXF_HORIZONTAL_VIEW_DISTANCE / 2;
+    data->world->endCorner.x = worldPiecePosition.x + HXF_HORIZONTAL_VIEW_DISTANCE / 2;
+    data->world->endCorner.y = 0;
+    data->world->endCorner.z = worldPiecePosition.z + HXF_HORIZONTAL_VIEW_DISTANCE / 2;
 
-    for (int32_t x = minX; x != maxX; x++) {
-        for (int32_t z = minZ; z != maxZ; z++) {
+    for (int32_t x = data->world->startCorner.x; x != data->world->endCorner.x; x++) {
+        for (int32_t z = data->world->startCorner.z; z != data->world->endCorner.z; z++) {
             HxfIvec3 pos = { x, 0, z };
+            HxfUvec3 normPos = { pos.x - data->world->startCorner.x, pos.y, pos.z - data->world->startCorner.z };
             HxfWorldPiece* piece = loadWorldPiece(data->world->directoryPath, &pos);
-            hxfMapSet(cubesMap, &piece->position, piece);
+
+            hxfHashMapPut(worldPiecesMap, &normPos, piece);
         }
     }
 }
@@ -293,23 +307,16 @@ void hxfWorldLoad(HxfWorldSaveData* restrict data) {
 void hxfWorldSave(HxfWorldSaveData* restrict data) {
     saveWorldInfo(data);
 
-    // Free the map along with the elements’ value that was previously allocated.
-
+    HxfWorldPiece** const worldPieces = (HxfWorldPiece**)data->world->pieces.table;
     const char* const directoryPath = data->world->directoryPath;
-    HxfMap* const map = &data->world->pieces;
-    HxfMapElement* start = map->start;
-    while (start != NULL) {
-        HxfWorldPiece* value = start->value; ///< The piece that will be saved and freed 
 
-         // Save the piece on the disk
-        saveWorldPiece(value, directoryPath);
+    // Save all the pieces in the world pieces map as they are all loaded in the world.
 
-        // Delete the map element and free the piece
-        hxfMapRemove(map, start->key);
-        hxfFree(value);
-
-        start = map->start;
+    for (uint32_t i = 0; i != WORLD_PIECE_COUNT; i++) {
+        saveWorldPiece(worldPieces[i], directoryPath);
     }
+
+    hxfFree(worldPieces);
 }
 
 int hxfWorldUpdatePiece(HxfWorld* restrict world, const HxfVec3* restrict position) {
@@ -319,59 +326,132 @@ int hxfWorldUpdatePiece(HxfWorld* restrict world, const HxfVec3* restrict positi
      * No need to set this to one when a piece is added because this mean a piece was also removed.
      */
     int wasUpdated = 0;
-    HxfMap* const worldPieces = &world->pieces;
-    const char* const worldDirectory = world->directoryPath;
+    HxfHashMap* const restrict worldPiecesMap = &world->pieces;
+    const char* const restrict worldDirectory = world->directoryPath;
 
     // Get the minimum and maximum world piece coordinate that will be loaded.
-    // Minimum is exclusive and maximum inclusive.
+    // Minimum is inclusive and maximum exclusive.
 
-    const HxfIvec3 worldPiecePosition = hxfWorldGetPiecePositionF(position);
+    const HxfIvec3 worldPiecePosition = hxfWorldPieceGetPositionF(position);
     const int32_t minX = worldPiecePosition.x - HXF_HORIZONTAL_VIEW_DISTANCE / 2;
-    const int32_t maxX = worldPiecePosition.x + HXF_HORIZONTAL_VIEW_DISTANCE / 2;
     const int32_t minZ = worldPiecePosition.z - HXF_HORIZONTAL_VIEW_DISTANCE / 2;
+    const int32_t maxX = worldPiecePosition.x + HXF_HORIZONTAL_VIEW_DISTANCE / 2;
     const int32_t maxZ = worldPiecePosition.z + HXF_HORIZONTAL_VIEW_DISTANCE / 2;
 
-    // Remove the world piece that are out of the view distance
+    // Remove the world piece that are out of the view distance and keep the others.
+    // Those that are kept are associated with a new hash, due to the the fact that
+    // worldPiecePosition has changed.
 
-    HxfMapElement* iterator = worldPieces->start;
-    HxfMapElement* toRemove[HXF_HORIZONTAL_VIEW_DISTANCE * HXF_VERTICAL_VIEW_DISTANCE * 2]; // The size of two layers to be sure there is enough place
+    const int32_t diffX = minX - world->startCorner.x;
+    const int32_t diffZ = minZ - world->startCorner.z;
 
-    // Find the pieces that need to be removed
-
-    int i = 0;
-    while (iterator != NULL) {
-        HxfIvec3* position = (HxfIvec3*)iterator->key;
-
-        if (position->x < minX || position->x >= maxX || position->z < minZ || position->z >= maxZ) {
-            toRemove[i] = iterator;
-            i++;
-        }
-        iterator = iterator->next;
-    }
-
-    // If i != 0, then there are pieces that need to be removed
-
-    if (i != 0) {
+    if (diffX != 0 || diffZ != 0) {
         wasUpdated = 1;
-        for (int j = 0; j != i; j++) {
-            void* value = toRemove[j]->value;
-            hxfMapRemove(worldPieces, toRemove[j]->key);
-            hxfFree(value);
-        }
-    }
 
-    // Add the new world piece
+        // Backup the old hash map and allocate a new table
 
-    for (int32_t x = minX; x != maxX; x++) {
-        for (int32_t z = minZ; z != maxZ; z++) {
-            // Load the world piece if it is not loaded
+        HxfHashMap oldMap = *worldPiecesMap; ///< Backup of the world pieces table
+        int exists[WORLD_PIECE_COUNT] = { 0 };
 
-            const HxfIvec3 position = { x, 0, z };
-            if (hxfMapGet(worldPieces, &position) == NULL) {
-                HxfWorldPiece* piece = loadWorldPiece(worldDirectory, &position);
-                hxfMapSet(worldPieces, &piece->position, piece);
+        worldPiecesMap->table = hxfMalloc(WORLD_PIECE_COUNT * sizeof(HxfWorldPiece*));
+        const int32_t tmpMinX = world->startCorner.x > minX ? world->startCorner.x : minX;
+        const int32_t tmpMinZ = world->startCorner.z > minZ ? world->startCorner.z : minZ;
+        const int32_t tmpMaxX = world->endCorner.x < maxX ? world->endCorner.x : maxX;
+        const int32_t tmpMaxZ = world->endCorner.z < maxZ ? world->endCorner.z : maxZ;
+
+        // clock_t start = clock();
+        for (int32_t x = tmpMinX; x != tmpMaxX; x++) {
+            for (int32_t z = tmpMinZ; z != tmpMaxZ; z++) {
+                const HxfUvec3 oldKey = { x - world->startCorner.x, 0, z - world->startCorner.z };
+                const HxfUvec3 newKey = { x - minX, 0, z - minZ };
+                const uint32_t hash = hashPosition(&newKey);
+                exists[hash] = 1;
+                hxfHashMapPutFromHash(worldPiecesMap, hash, hxfHashMapGet(&oldMap, &oldKey));
             }
         }
+        // clock_t end = clock();
+        // printf("first: %f\n", (float)(end - start) / (float)CLOCKS_PER_SEC);
+
+        // start = clock();
+        for (int32_t x = minX; x != maxX; x++) {
+            for (int32_t z = minZ; z != maxZ; z++) {
+                const HxfUvec3 key = { x - minX, 0, z - minZ };
+                const uint32_t hash = hashPosition(&key);
+                if (!exists[hash]) {
+                    const HxfIvec3 worldPiecePosition = { x, 0, z };
+                    hxfHashMapPutFromHash(worldPiecesMap, hash, loadWorldPiece(worldDirectory, &worldPiecePosition));
+                }
+            }
+        }
+        // end = clock();
+        // printf("second: %f\n", (float)(end - start) / (float)CLOCKS_PER_SEC);
+
+        // start = clock();
+        if (diffX < 0) {
+            for (int32_t x = world->endCorner.x + diffX; x != world->endCorner.x; x++) {
+                for (uint32_t z = 0; z != HXF_HORIZONTAL_VIEW_DISTANCE; z++) {
+                    HxfUvec3 oldKey = { x - world->startCorner.x, 0, z };
+                    uint32_t oldHash = hashPosition(&oldKey);
+                    HxfWorldPiece* toSave = hxfHashMapGetFromHash(&oldMap, oldHash);
+                    if (toSave != NULL) {
+                        saveWorldPiece(toSave, worldDirectory);
+                        hxfHashMapPutFromHash(&oldMap, oldHash, NULL);
+                    }
+                }
+            }
+        }
+        else if (diffX > 0) {
+            for (int32_t x = world->startCorner.x; x != world->startCorner.x + diffX; x++) {
+                for (uint32_t z = 0; z != HXF_HORIZONTAL_VIEW_DISTANCE; z++) {
+                    HxfUvec3 oldKey = { x - world->startCorner.x, 0, z };
+                    uint32_t oldHash = hashPosition(&oldKey);
+                    HxfWorldPiece* toSave = hxfHashMapGetFromHash(&oldMap, oldHash);
+                    if (toSave != NULL) {
+                        saveWorldPiece(toSave, worldDirectory);
+                        hxfHashMapPutFromHash(&oldMap, oldHash, NULL);
+                    }
+                }
+            }
+        }
+        // end = clock();
+        // printf("test1: %f\n", (float)(end - start) / (float)CLOCKS_PER_SEC);
+
+        // start = clock();
+        if (diffZ < 0) {
+            for (uint32_t x = 0; x != HXF_HORIZONTAL_VIEW_DISTANCE; x++) {
+                for (int32_t z = world->endCorner.z + diffZ; z != world->endCorner.z; z++) {
+                    HxfUvec3 oldKey = { x, 0, z - world->startCorner.z };
+                    uint32_t oldHash = hashPosition(&oldKey);
+                    HxfWorldPiece* toSave = hxfHashMapGetFromHash(&oldMap, oldHash);
+                    if (toSave != NULL) {
+                        saveWorldPiece(toSave, worldDirectory);
+                        hxfHashMapPutFromHash(&oldMap, oldHash, NULL);
+                    }
+                }
+            }
+        }
+        else if (diffZ > 0) {
+            for (uint32_t x = 0; x != HXF_HORIZONTAL_VIEW_DISTANCE; x++) {
+                for (int32_t z = world->startCorner.z; z != world->startCorner.z + diffZ; z++) {
+                    HxfUvec3 oldKey = { x, 0, z - world->startCorner.z };
+                    uint32_t oldHash = hashPosition(&oldKey);
+                    HxfWorldPiece* toSave = hxfHashMapGetFromHash(&oldMap, oldHash);
+                    if (toSave != NULL) {
+                        saveWorldPiece(toSave, worldDirectory);
+                        hxfHashMapPutFromHash(&oldMap, oldHash, NULL);
+                    }
+                }
+            }
+        }
+        // end = clock();
+        // printf("test2: %f\n", (float)(end - start) / (float)CLOCKS_PER_SEC);
+
+        world->startCorner.x = minX;
+        world->startCorner.z = minZ;
+        world->endCorner.x = maxX;
+        world->endCorner.z = maxZ;
+
+        hxfFree(oldMap.table);
     }
 
     return wasUpdated;
