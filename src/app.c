@@ -144,4 +144,6 @@ void hxfAppStart(const HxfAppParam* restrict param) {
     hxfGameStop(&app.game);
     hxfGraphicsDestroy(&app.graphics);
     hxfDestroyMainWindow(&app.mainWindow);
+
+    printf("Bye!\n"); // Print a goodbye message to be sure there is no crash at the end.
 }
