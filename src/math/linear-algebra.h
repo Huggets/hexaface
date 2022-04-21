@@ -12,7 +12,6 @@
     {0.0f, 0.0f, 0.0f, 1.0f}}}
 
 /**
- * @struct HxfVec2
  * @brief A 2 dimensional vector of float values.
  */
 typedef struct HxfVec2 {
@@ -21,7 +20,6 @@ typedef struct HxfVec2 {
 } HxfVec2;
 
 /**
- * @struct HxfIvec2
  * @brief A 2 dimensional vector of int values.
  */
 typedef struct HxfIvec2 {
@@ -30,7 +28,6 @@ typedef struct HxfIvec2 {
 } HxfIvec2;
 
 /**
- * @struct HxfVec3
  * @brief A 3 dimensional vector of float values.
  */
 typedef struct HxfVec3 {
@@ -40,8 +37,7 @@ typedef struct HxfVec3 {
 } HxfVec3;
 
 /**
- * @struct HxfIvec3
- * @brief A 3 dimensional vector of integer values.
+ * @brief A 3 dimensional vector of signed integer value.
  */
 typedef struct HxfIvec3 {
     int32_t x;
@@ -50,7 +46,15 @@ typedef struct HxfIvec3 {
 } HxfIvec3;
 
 /**
- * @struct HxfVec4
+ * @brief A 3 dimensional vector of unsigned integer value.
+ */
+typedef struct HxfUvec3 {
+    uint32_t x;
+    uint32_t y;
+    uint32_t z;
+} HxfUvec3;
+
+/**
  * @brief A 4 dimensional vector of float values.
  */
 typedef struct HxfVec4 {
@@ -61,7 +65,6 @@ typedef struct HxfVec4 {
 } HxfVec4;
 
 /**
- * \struct HxfMat4
  * \brief A 4×4 matrix of float value.
  */
 typedef struct HxfMat4 {
