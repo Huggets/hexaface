@@ -28,14 +28,26 @@ typedef enum HxfResult {
 } HxfResult;
 
 /**
- * \brief Allocate size bytes of memory.
- * \param size The size of the block of memory to allocate.
- * \return A pointer to the data allocated.
+ * @brief A custom call to malloc.
  *
- * If the allocation fails, then it exits the program.
+ * Exit the progam if it fails.
+ *
+ * @param size The number of byte to allocated.
+ *
+ * @return The return value of malloc.
  */
 void* hxfMalloc(size_t size);
 
+/**
+ * @brief A custom call to calloc.
+ *
+ * Exit the program if it fails.
+ *
+ * @param num The number of element to allocate.
+ * @param size The size of one element.
+ *
+ * @return The return value of calloc.
+ */
 void* hxfCalloc(size_t num, size_t size);
 
 /**
@@ -51,6 +63,12 @@ void* hxfRealloc(void* ptr, size_t size);
  * @param ptr
  */
 void hxfFree(void* ptr);
+
+/**
+ * @brief Print the information about the allocation if
+ * the HXF_DEBUG_ALLOC macro is defined.
+ */
+void hxfAllocationInfo();
 
 /**
  * \brief Read a file.

@@ -36,7 +36,7 @@ static size_t allocCount = 0;
 /**
  * @brief Information on each allocation made.
  */
-static HxfAlloc allocsInfo[1024] = { 0 };
+static HxfAlloc allocsInfo[8096] = { 0 };
 #endif
 
 void* hxfMalloc(size_t size) {
@@ -55,7 +55,7 @@ void* hxfMalloc(size_t size) {
     byteAllocated += size; // Update the value
     allocIndex++;
     allocCount++;
-    printf("malloc: new size %lluB, malloc count = %llu\n", byteAllocated, allocCount);
+    // printf("malloc: new size %lluB, malloc count = %llu\n", byteAllocated, allocCount);
 #endif
 
     return data;
@@ -77,7 +77,7 @@ void* hxfCalloc(size_t num, size_t size) {
     byteAllocated += size; // Update the value
     allocIndex++;
     allocCount++;
-    printf("malloc: new size %lluB, malloc count = %llu\n", byteAllocated, allocCount);
+    // printf("malloc: new size %lluB, malloc count = %llu\n", byteAllocated, allocCount);
 #endif
 
     return data;
@@ -99,7 +99,7 @@ void* hxfRealloc(void* ptr, size_t size) {
             byteAllocated = byteAllocated - allocsInfo[i].size + size; // Update
             allocsInfo[i].size = size;
 
-            printf("realloc: new size %lluB, malloc count = %llu\n", byteAllocated, allocCount);
+            // printf("realloc: new size %lluB, malloc count = %llu\n", byteAllocated, allocCount);
             break;
         }
     }
@@ -112,16 +112,26 @@ void hxfFree(void* ptr) {
     free(ptr);
 
 #if defined(HXF_DEBUG_ALLOC)
-    for (int i = allocIndex - 1; i != -1; i--) {
-        if (allocsInfo[i].ptr == ptr) {
-            byteAllocated -= allocsInfo[i].size; // Update
+    if (ptr != NULL) {
+        for (int i = allocIndex - 1; i != -1; i--) {
+            if (allocsInfo[i].ptr == ptr) {
+                byteAllocated -= allocsInfo[i].size; // Update
 
-            allocsInfo[i].ptr = NULL; // Clear the ptr value
-            break;
+                allocsInfo[i].ptr = NULL; // Clear the ptr value
+                break;
+            }
         }
+        allocCount--;
     }
-    allocCount--;
-    printf("free: new size %lluB, malloc count = %llu\n", byteAllocated, allocCount);
+    // printf("free: new size %lluB, malloc count = %llu\n", byteAllocated, allocCount);
+#endif
+}
+
+void hxfAllocationInfo() {
+#if defined(HXF_DEBUG_ALLOC)
+    // printf("byte allocated:   %lluB | %lluKB | %lluMB | %lluGB\n", byteAllocated, byteAllocated / 1024, byteAllocated / 1024 / 1024, byteAllocated / 1024 / 1024 / 1024);
+    printf("byte allocated: %lluB\n", byteAllocated);
+    printf("allocation count: %llu\n", allocCount);
 #endif
 }
 
