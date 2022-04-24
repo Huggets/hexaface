@@ -13,8 +13,11 @@
  *
  */
 #define HXF_WORLD_PIECE_CUBE_COUNT HXF_WORLD_PIECE_SIZE * HXF_WORLD_PIECE_SIZE * HXF_WORLD_PIECE_SIZE
-#define HXF_HORIZONTAL_VIEW_DISTANCE 32 // Must be even
+#define HXF_HORIZONTAL_VIEW_DISTANCE 16 // Must be even
 #define HXF_VERTICAL_VIEW_DISTANCE 1 // Must be even, But it MUST be 1 for now because it is not used.
+#define HXF_WORLD_WIDTH (HXF_HORIZONTAL_VIEW_DISTANCE + 1)
+#define HXF_WORLD_HEIGHT (HXF_VERTICAL_VIEW_DISTANCE + 1)
+#define HXF_WORLD_PIECE_MAP_COUNT (HXF_WORLD_WIDTH * HXF_WORLD_WIDTH * HXF_WORLD_HEIGHT) // The number of element of the world piece hash map
 
 /**
  * @brief A piece of the world.
@@ -32,18 +35,10 @@ typedef struct HxfWorldPiece {
 typedef struct HxfWorld {
     HxfHashMap pieces; ///< A hash map containing the world pieces. (the index is the world piece position)
     char* directoryPath; ///< The path to the directory of the world.
-    /**
-     * @brief The coordinate of the start of the world. No world pieces are outside this corner.
-     *
-     * This is dynamic and change according to the player position.
-     */
-    HxfIvec3 startCorner;
-    /**
-     * @brief The coordinate of the end of the world. No world pieces are outside this corner.
-     *
-     * This is dynamic and change according to the player position.
-     */
-    HxfIvec3 endCorner;
+    HxfIvec3 inStartCorner; ///< Start corner of the inner rectangle.
+    HxfIvec3 inEndCorner; ///< End corner of the inner rectangle
+    HxfIvec3 outStartCorner;
+    HxfIvec3 outEndCorner;
 } HxfWorld;
 
 /**
@@ -83,6 +78,14 @@ HxfIvec3 hxfWorldPieceGetPositionI(const HxfIvec3* restrict globalPosition);
  */
 HxfIvec3 hxfWorldGetLocalPosition(const HxfIvec3* restrict globalPosition);
 
+/**
+ * @brief Give the position relative to the startCorner.
+ *
+ * @param startCorner
+ * @param in
+ * @param out
+ */
+void hxfWorldNormalizePosition(const HxfIvec3* restrict startCorner, const HxfIvec3* restrict in, HxfUvec3* restrict out);
 
 /**
  * @brief Load a world from a disk.

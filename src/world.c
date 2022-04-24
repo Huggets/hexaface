@@ -10,18 +10,14 @@
 
 #define WORLD_PIECE_FILE_SIZE HXF_WORLD_PIECE_CUBE_COUNT * sizeof(uint32_t)
 
-#define WORLD_INFO_YAW_SIZE sizeof(float)
 #define WORLD_INFO_YAW_OFFSET 0
-
+#define WORLD_INFO_YAW_SIZE sizeof(float)
+#define WORLD_INFO_PITCH_OFFSET (WORLD_INFO_YAW_OFFSET + WORLD_INFO_YAW_SIZE)
 #define WORLD_INFO_PITCH_SIZE sizeof(float)
-#define WORLD_INFO_PITCH_OFFSET WORLD_INFO_YAW_OFFSET + WORLD_INFO_YAW_SIZE
-
+#define WORLD_INFO_POSITION_OFFSET (WORLD_INFO_PITCH_OFFSET + WORLD_INFO_PITCH_SIZE)
 #define WORLD_INFO_POSITON_SIZE sizeof(HxfVec3)
-#define WORLD_INFO_POSITION_OFFSET WORLD_INFO_PITCH_OFFSET + WORLD_INFO_PITCH_SIZE
 
-#define WORLD_INFO_FILE_SIZE WORLD_INFO_POSITION_OFFSET + WORLD_INFO_POSITON_SIZE
-
-#define WORLD_PIECE_COUNT HXF_HORIZONTAL_VIEW_DISTANCE * HXF_HORIZONTAL_VIEW_DISTANCE * HXF_VERTICAL_VIEW_DISTANCE
+#define WORLD_INFO_FILE_SIZE (WORLD_INFO_POSITION_OFFSET + WORLD_INFO_POSITON_SIZE)
 
 /**
  * @brief The hash function used with the world pieces hash map.
@@ -34,10 +30,13 @@
  */
 static uint32_t hashPosition(const void* restrict key) {
     uint32_t hash = 0;
+    const uint32_t horizontal = HXF_WORLD_WIDTH;
+    const uint32_t horizontal2 = horizontal * horizontal;
+    const uint32_t vertical = HXF_WORLD_HEIGHT;
 
-    hash += (((HxfUvec3*)key)->y * HXF_HORIZONTAL_VIEW_DISTANCE * HXF_HORIZONTAL_VIEW_DISTANCE) % (HXF_VERTICAL_VIEW_DISTANCE * HXF_HORIZONTAL_VIEW_DISTANCE * HXF_HORIZONTAL_VIEW_DISTANCE);
-    hash += (((HxfUvec3*)key)->x * HXF_HORIZONTAL_VIEW_DISTANCE) % (HXF_HORIZONTAL_VIEW_DISTANCE * HXF_HORIZONTAL_VIEW_DISTANCE);
-    hash += ((HxfUvec3*)key)->z % HXF_HORIZONTAL_VIEW_DISTANCE;
+    hash += (((HxfUvec3*)key)->y * horizontal2) % (vertical * horizontal2);
+    hash += (((HxfUvec3*)key)->x * horizontal) % (horizontal2);
+    hash += ((HxfUvec3*)key)->z % horizontal;
 
     return hash;
 }
@@ -274,6 +273,12 @@ HxfIvec3 hxfWorldGetLocalPosition(const HxfIvec3* restrict globalPosition) {
     return localPosition;
 }
 
+void hxfWorldNormalizePosition(const HxfIvec3* restrict startCorner, const HxfIvec3* restrict in, HxfUvec3* restrict out) {
+    out->x = in->x - startCorner->x;
+    out->y = in->y - startCorner->y;
+    out->z = in->z - startCorner->z;
+}
+
 void hxfWorldLoad(HxfWorldSaveData* restrict data) {
     loadWorldInfo(data);
 
@@ -281,22 +286,30 @@ void hxfWorldLoad(HxfWorldSaveData* restrict data) {
 
     HxfHashMap* const worldPiecesMap = &data->world->pieces;
     worldPiecesMap->hash = hashPosition;
-    worldPiecesMap->table = hxfMalloc(WORLD_PIECE_COUNT * sizeof(HxfWorldPiece*));
+    worldPiecesMap->table = hxfCalloc(1, HXF_WORLD_PIECE_MAP_COUNT * sizeof(HxfWorldPiece*));
 
     // Load the world pieces around the camera position according to the view distance
 
     const HxfIvec3 worldPiecePosition = hxfWorldPieceGetPositionF(data->cameraPosition);
-    data->world->startCorner.x = worldPiecePosition.x - HXF_HORIZONTAL_VIEW_DISTANCE / 2;
-    data->world->startCorner.y = 0;
-    data->world->startCorner.z = worldPiecePosition.z - HXF_HORIZONTAL_VIEW_DISTANCE / 2;
-    data->world->endCorner.x = worldPiecePosition.x + HXF_HORIZONTAL_VIEW_DISTANCE / 2;
-    data->world->endCorner.y = 0;
-    data->world->endCorner.z = worldPiecePosition.z + HXF_HORIZONTAL_VIEW_DISTANCE / 2;
+    data->world->inStartCorner.x = worldPiecePosition.x - HXF_HORIZONTAL_VIEW_DISTANCE / 2;
+    data->world->inStartCorner.y = 0;
+    data->world->inStartCorner.z = worldPiecePosition.z - HXF_HORIZONTAL_VIEW_DISTANCE / 2;
+    data->world->inEndCorner.x = worldPiecePosition.x + HXF_HORIZONTAL_VIEW_DISTANCE / 2;
+    data->world->inEndCorner.y = 0;
+    data->world->inEndCorner.z = worldPiecePosition.z + HXF_HORIZONTAL_VIEW_DISTANCE / 2;
 
-    for (int32_t x = data->world->startCorner.x; x != data->world->endCorner.x; x++) {
-        for (int32_t z = data->world->startCorner.z; z != data->world->endCorner.z; z++) {
+    data->world->outStartCorner.x = data->world->inStartCorner.x - HXF_HORIZONTAL_VIEW_DISTANCE / 2;
+    data->world->outStartCorner.y = 0;
+    data->world->outStartCorner.z = data->world->inStartCorner.z - HXF_HORIZONTAL_VIEW_DISTANCE / 2;
+    data->world->outEndCorner.x = data->world->inEndCorner.x + HXF_HORIZONTAL_VIEW_DISTANCE / 2;
+    data->world->outEndCorner.y = 0;
+    data->world->outEndCorner.z = data->world->inEndCorner.z + HXF_HORIZONTAL_VIEW_DISTANCE / 2;
+
+    for (int32_t x = data->world->inStartCorner.x; x != data->world->inEndCorner.x; x++) {
+        for (int32_t z = data->world->inStartCorner.z; z != data->world->inEndCorner.z; z++) {
             HxfIvec3 pos = { x, 0, z };
-            HxfUvec3 normPos = { pos.x - data->world->startCorner.x, pos.y, pos.z - data->world->startCorner.z };
+            HxfUvec3 normPos;
+            hxfWorldNormalizePosition(&data->world->outStartCorner, &pos, &normPos);
             HxfWorldPiece* piece = loadWorldPiece(data->world->directoryPath, &pos);
 
             hxfHashMapPut(worldPiecesMap, &normPos, piece);
@@ -312,20 +325,18 @@ void hxfWorldSave(HxfWorldSaveData* restrict data) {
 
     // Save all the pieces in the world pieces map as they are all loaded in the world.
 
-    for (uint32_t i = 0; i != WORLD_PIECE_COUNT; i++) {
-        saveWorldPiece(worldPieces[i], directoryPath);
+    for (uint32_t i = 0; i != HXF_WORLD_PIECE_MAP_COUNT; i++) {
+        HxfWorldPiece* const restrict worldPiece = worldPieces[i];
+        if (worldPiece != NULL) {
+            saveWorldPiece(worldPieces[i], directoryPath);
+        }
     }
 
     hxfFree(worldPieces);
 }
 
 int hxfWorldUpdatePiece(HxfWorld* restrict world, const HxfVec3* restrict position) {
-    /**
-     * @brief Set to one when a world piece was removed.
-     *
-     * No need to set this to one when a piece is added because this mean a piece was also removed.
-     */
-    int wasUpdated = 0;
+    int updated = 0;
     HxfHashMap* const restrict worldPiecesMap = &world->pieces;
     const char* const restrict worldDirectory = world->directoryPath;
 
@@ -338,121 +349,84 @@ int hxfWorldUpdatePiece(HxfWorld* restrict world, const HxfVec3* restrict positi
     const int32_t maxX = worldPiecePosition.x + HXF_HORIZONTAL_VIEW_DISTANCE / 2;
     const int32_t maxZ = worldPiecePosition.z + HXF_HORIZONTAL_VIEW_DISTANCE / 2;
 
+    int needRearrange =
+        minX < world->outStartCorner.x || maxX >= world->outEndCorner.x ||
+        minZ < world->outStartCorner.z || maxZ >= world->outEndCorner.z;
+
     // Remove the world piece that are out of the view distance and keep the others.
     // Those that are kept are associated with a new hash, due to the the fact that
     // worldPiecePosition has changed.
 
-    const int32_t diffX = minX - world->startCorner.x;
-    const int32_t diffZ = minZ - world->startCorner.z;
+    static int32_t prevDiffX = 0;
+    static int32_t prevDiffZ = 0;
+    const int32_t diffX = minX - world->inStartCorner.x;
+    const int32_t diffZ = minZ - world->inStartCorner.z;
 
-    if (diffX != 0 || diffZ != 0) {
-        wasUpdated = 1;
+    if (needRearrange) {
+        updated = 1;
 
-        // Backup the old hash map and allocate a new table
+        HxfIvec3 oldStartCorner = world->inStartCorner;
+        HxfIvec3 oldOutStartCorner = world->outStartCorner;
+        HxfIvec3 oldEndCorner = world->inEndCorner;
+        HxfHashMap oldMap = *worldPiecesMap;
+        worldPiecesMap->table = hxfCalloc(1, HXF_WORLD_PIECE_MAP_COUNT * sizeof(HxfWorldPiece*));
 
-        HxfHashMap oldMap = *worldPiecesMap; ///< Backup of the world pieces table
-        int exists[WORLD_PIECE_COUNT] = { 0 };
+        world->inStartCorner.x = minX;
+        world->inStartCorner.z = minZ;
+        world->inEndCorner.x = maxX;
+        world->inEndCorner.z = maxZ;
+        world->outStartCorner.x = minX - HXF_HORIZONTAL_VIEW_DISTANCE / 2;
+        world->outStartCorner.z = minZ - HXF_HORIZONTAL_VIEW_DISTANCE / 2;
+        world->outEndCorner.x = maxX + HXF_HORIZONTAL_VIEW_DISTANCE / 2;
+        world->outEndCorner.z = maxZ + HXF_HORIZONTAL_VIEW_DISTANCE / 2;
 
-        worldPiecesMap->table = hxfMalloc(WORLD_PIECE_COUNT * sizeof(HxfWorldPiece*));
-        const int32_t tmpMinX = world->startCorner.x > minX ? world->startCorner.x : minX;
-        const int32_t tmpMinZ = world->startCorner.z > minZ ? world->startCorner.z : minZ;
-        const int32_t tmpMaxX = world->endCorner.x < maxX ? world->endCorner.x : maxX;
-        const int32_t tmpMaxZ = world->endCorner.z < maxZ ? world->endCorner.z : maxZ;
-
-        // clock_t start = clock();
-        for (int32_t x = tmpMinX; x != tmpMaxX; x++) {
-            for (int32_t z = tmpMinZ; z != tmpMaxZ; z++) {
-                const HxfUvec3 oldKey = { x - world->startCorner.x, 0, z - world->startCorner.z };
-                const HxfUvec3 newKey = { x - minX, 0, z - minZ };
-                const uint32_t hash = hashPosition(&newKey);
-                exists[hash] = 1;
-                hxfHashMapPutFromHash(worldPiecesMap, hash, hxfHashMapGet(&oldMap, &oldKey));
-            }
-        }
-        // clock_t end = clock();
-        // printf("first: %f\n", (float)(end - start) / (float)CLOCKS_PER_SEC);
-
-        // start = clock();
+        // Get all the world piece needed.
+        // Get those already loaded and load the others.
         for (int32_t x = minX; x != maxX; x++) {
             for (int32_t z = minZ; z != maxZ; z++) {
-                const HxfUvec3 key = { x - minX, 0, z - minZ };
-                const uint32_t hash = hashPosition(&key);
-                if (!exists[hash]) {
-                    const HxfIvec3 worldPiecePosition = { x, 0, z };
-                    hxfHashMapPutFromHash(worldPiecesMap, hash, loadWorldPiece(worldDirectory, &worldPiecePosition));
+                HxfIvec3 position = { x, 0, z };
+                HxfUvec3 normalizedPosition;
+                HxfWorldPiece* worldPiece;
+                if (x >= oldStartCorner.x && x < oldEndCorner.x && z >= oldStartCorner.z && z < oldEndCorner.z) {
+                    hxfWorldNormalizePosition(&oldOutStartCorner, &position, &normalizedPosition);
+                    uint32_t hash = hashPosition(&normalizedPosition);
+                    worldPiece = hxfHashMapGetFromHash(&oldMap, hash);
+                    hxfHashMapPutFromHash(&oldMap, hash, NULL);
                 }
+                else {
+                    worldPiece = loadWorldPiece(worldDirectory, &position);
+                }
+                hxfWorldNormalizePosition(&world->outStartCorner, &position, &normalizedPosition);
+                hxfHashMapPut(worldPiecesMap, &normalizedPosition, worldPiece);
             }
         }
-        // end = clock();
-        // printf("second: %f\n", (float)(end - start) / (float)CLOCKS_PER_SEC);
 
-        // start = clock();
-        if (diffX < 0) {
-            for (int32_t x = world->endCorner.x + diffX; x != world->endCorner.x; x++) {
-                for (uint32_t z = 0; z != HXF_HORIZONTAL_VIEW_DISTANCE; z++) {
-                    HxfUvec3 oldKey = { x - world->startCorner.x, 0, z };
-                    uint32_t oldHash = hashPosition(&oldKey);
-                    HxfWorldPiece* toSave = hxfHashMapGetFromHash(&oldMap, oldHash);
-                    if (toSave != NULL) {
-                        saveWorldPiece(toSave, worldDirectory);
-                        hxfHashMapPutFromHash(&oldMap, oldHash, NULL);
-                    }
-                }
-            }
+        for (int i = 0; i != HXF_WORLD_PIECE_MAP_COUNT; i++) {
+            hxfFree(oldMap.table[i]);
+            hxfHashMapPutFromHash(&oldMap, i, NULL);
         }
-        else if (diffX > 0) {
-            for (int32_t x = world->startCorner.x; x != world->startCorner.x + diffX; x++) {
-                for (uint32_t z = 0; z != HXF_HORIZONTAL_VIEW_DISTANCE; z++) {
-                    HxfUvec3 oldKey = { x - world->startCorner.x, 0, z };
-                    uint32_t oldHash = hashPosition(&oldKey);
-                    HxfWorldPiece* toSave = hxfHashMapGetFromHash(&oldMap, oldHash);
-                    if (toSave != NULL) {
-                        saveWorldPiece(toSave, worldDirectory);
-                        hxfHashMapPutFromHash(&oldMap, oldHash, NULL);
-                    }
-                }
-            }
-        }
-        // end = clock();
-        // printf("test1: %f\n", (float)(end - start) / (float)CLOCKS_PER_SEC);
-
-        // start = clock();
-        if (diffZ < 0) {
-            for (uint32_t x = 0; x != HXF_HORIZONTAL_VIEW_DISTANCE; x++) {
-                for (int32_t z = world->endCorner.z + diffZ; z != world->endCorner.z; z++) {
-                    HxfUvec3 oldKey = { x, 0, z - world->startCorner.z };
-                    uint32_t oldHash = hashPosition(&oldKey);
-                    HxfWorldPiece* toSave = hxfHashMapGetFromHash(&oldMap, oldHash);
-                    if (toSave != NULL) {
-                        saveWorldPiece(toSave, worldDirectory);
-                        hxfHashMapPutFromHash(&oldMap, oldHash, NULL);
-                    }
-                }
-            }
-        }
-        else if (diffZ > 0) {
-            for (uint32_t x = 0; x != HXF_HORIZONTAL_VIEW_DISTANCE; x++) {
-                for (int32_t z = world->startCorner.z; z != world->startCorner.z + diffZ; z++) {
-                    HxfUvec3 oldKey = { x, 0, z - world->startCorner.z };
-                    uint32_t oldHash = hashPosition(&oldKey);
-                    HxfWorldPiece* toSave = hxfHashMapGetFromHash(&oldMap, oldHash);
-                    if (toSave != NULL) {
-                        saveWorldPiece(toSave, worldDirectory);
-                        hxfHashMapPutFromHash(&oldMap, oldHash, NULL);
-                    }
-                }
-            }
-        }
-        // end = clock();
-        // printf("test2: %f\n", (float)(end - start) / (float)CLOCKS_PER_SEC);
-
-        world->startCorner.x = minX;
-        world->startCorner.z = minZ;
-        world->endCorner.x = maxX;
-        world->endCorner.z = maxZ;
 
         hxfFree(oldMap.table);
     }
+    else if ((prevDiffX != diffX && diffX != 0) || (prevDiffZ != diffZ && diffZ != 0)) {
+        updated = 1;
 
-    return wasUpdated;
+        for (int32_t x = minX; x != maxX; x++) {
+            for (int32_t z = minZ; z != maxZ; z++) {
+                HxfIvec3 position = { x, 0, z };
+                HxfUvec3 normalizedPosition;
+                hxfWorldNormalizePosition(&world->outStartCorner, &position, &normalizedPosition);
+                uint32_t hash = hashPosition(&normalizedPosition);
+                if (hxfHashMapGetFromHash(worldPiecesMap, hash) == NULL) {
+                    hxfHashMapPutFromHash(worldPiecesMap, hash, loadWorldPiece(worldDirectory, &position));
+                }
+            }
+        }
+
+
+        prevDiffX = diffX;
+        prevDiffZ = diffZ;
+    }
+
+    return updated;
 }

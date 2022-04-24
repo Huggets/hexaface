@@ -49,13 +49,14 @@ void hxfReplaceCube(HxfGameData* restrict game, const HxfIvec3* restrict positio
     // HxfHashMap* worldPieceElement = hxfMapGet(&game->world.pieces, &cubeRelativePosition);
 
     if (
-        worldPiecePosition.x >= game->world.startCorner.x && worldPiecePosition.x < game->world.endCorner.x
+        worldPiecePosition.x >= game->world.inStartCorner.x && worldPiecePosition.x < game->world.inEndCorner.x
         && worldPiecePosition.y == 0
-        && worldPiecePosition.z >= game->world.startCorner.z && worldPiecePosition.z < game->world.endCorner.z
+        && worldPiecePosition.z >= game->world.inStartCorner.z && worldPiecePosition.z < game->world.inEndCorner.z
         ) {
-        HxfUvec3 normPosition = { worldPiecePosition.x - game->world.startCorner.x, 0, worldPiecePosition.z - game->world.startCorner.z };
+        HxfUvec3 normPos;
+        hxfWorldNormalizePosition(&game->world.outStartCorner, &worldPiecePosition, &normPos);
         HxfIvec3 localPosition = hxfWorldGetLocalPosition(position);
-        ((HxfWorldPiece*)hxfHashMapGet(&game->world.pieces, &normPosition))->cubes[localPosition.x][localPosition.y][localPosition.z] = textureIndex;
+        ((HxfWorldPiece*)hxfHashMapGet(&game->world.pieces, &normPos))->cubes[localPosition.x][localPosition.y][localPosition.z] = textureIndex;
         hxfGraphicsUpdateCubeBuffer(game->graphics);
     }
 }

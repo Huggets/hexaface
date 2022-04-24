@@ -1346,8 +1346,10 @@ static void addDrawnFace(HxfCubeInstanceData* restrict faces, const HxfVec3* res
 }
 
 void hxfGraphicsUpdateCubeBuffer(HxfGraphicsHandler* restrict graphics) {
-    HxfDrawingData* const drawingData = &graphics->drawingData;
-    HxfWorldPiece** const worldPieces = (HxfWorldPiece**)graphics->world->pieces.table;
+    const HxfWorld* const restrict world = graphics->world;
+    const HxfHashMap* const restrict worldPiecesMap = &world->pieces;
+    HxfDrawingData* const restrict drawingData = &graphics->drawingData;
+    HxfWorldPiece** const restrict worldPieces = (HxfWorldPiece**)graphics->world->pieces.table;
 
     // Reset all the faces. No faces are drawn.
 
@@ -1359,46 +1361,154 @@ void hxfGraphicsUpdateCubeBuffer(HxfGraphicsHandler* restrict graphics) {
     drawingData->faceLeftCount = 0;
 
     // Select the faces that are not hidden by other cubes.
+    for (int i = 0; i != HXF_WORLD_PIECE_MAP_COUNT; i++) { // For each world piece.
+        const HxfWorldPiece* const restrict worldPiece = worldPieces[i];
+        if (worldPiece == NULL) {
+            continue; // If there is no world piece iterate through the next piece
+        }
+        const HxfIvec3* const restrict piecePosition = &worldPiece->position;
+        HxfUvec3 normalizedWorldPiecePosition;
+        hxfWorldNormalizePosition(&world->outStartCorner, piecePosition, &normalizedWorldPiecePosition);
 
-    for (int i = 0; i != HXF_HORIZONTAL_VIEW_DISTANCE * HXF_HORIZONTAL_VIEW_DISTANCE * HXF_VERTICAL_VIEW_DISTANCE; i++) { // For each world piece.
         for (int x = 0; x != HXF_WORLD_PIECE_SIZE; x++) {
             for (int y = 0; y != HXF_WORLD_PIECE_SIZE; y++) {
                 for (int z = 0; z != HXF_WORLD_PIECE_SIZE; z++) {
-                    HxfWorldPiece* const worldPiece = worldPieces[i];
-
                     const uint32_t textureId = worldPiece->cubes[x][y][z];
-                    const HxfVec3 position = { x + worldPiece->position.x * HXF_WORLD_PIECE_SIZE, y + worldPiece->position.y * HXF_WORLD_PIECE_SIZE, z + worldPiece->position.z * HXF_WORLD_PIECE_SIZE };
+                    const HxfVec3 globalPosition = { x + piecePosition->x * HXF_WORLD_PIECE_SIZE, y + piecePosition->y * HXF_WORLD_PIECE_SIZE, z + piecePosition->z * HXF_WORLD_PIECE_SIZE };
 
                     if (textureId != 0) {
-                        if ((x != HXF_WORLD_PIECE_SIZE - 1 && worldPiece->cubes[x + 1][y][z] == 0)
-                            || x == HXF_WORLD_PIECE_SIZE - 1) {
+                        // size_t* index;
+                        // index = &drawingData->faceBackCount;
+                        // addDrawnFace(&drawingData->cubeInstances[HXF_FACES_BACK_OFFSET + *index], &globalPosition, textureId, index);
+                        // index = &drawingData->faceFrontCount;
+                        // addDrawnFace(&drawingData->cubeInstances[HXF_FACES_FRONT_OFFSET + *index], &globalPosition, textureId, index);
+                        // index = &drawingData->faceRightCount;
+                        // addDrawnFace(&drawingData->cubeInstances[HXF_FACES_RIGHT_OFFSET + *index], &globalPosition, textureId, index);
+                        // index = &drawingData->faceLeftCount;
+                        // addDrawnFace(&drawingData->cubeInstances[HXF_FACES_LEFT_OFFSET + *index], &globalPosition, textureId, index);
+                        // index = &drawingData->faceTopCount;
+                        // addDrawnFace(&drawingData->cubeInstances[HXF_FACES_TOP_OFFSET + *index], &globalPosition, textureId, index);
+                        // index = &drawingData->faceBottomCount;
+                        // addDrawnFace(&drawingData->cubeInstances[HXF_FACES_BOTTOM_OFFSET + *index], &globalPosition, textureId, index);
+
+                        if (x == HXF_WORLD_PIECE_SIZE - 1) {
+                            if (normalizedWorldPiecePosition.x < HXF_WORLD_WIDTH - 1) {
+                                normalizedWorldPiecePosition.x++;
+                                const HxfWorldPiece* const restrict piece = (HxfWorldPiece*)hxfHashMapGet(worldPiecesMap, &normalizedWorldPiecePosition);
+                                if (piece == NULL || piece->cubes[0][y][z] == 0) {
+                                    size_t* index = &drawingData->faceRightCount;
+                                    addDrawnFace(&drawingData->cubeInstances[HXF_FACES_RIGHT_OFFSET + *index], &globalPosition, textureId, index);
+                                }
+                                normalizedWorldPiecePosition.x--;
+                            }
+                            else {
+                                size_t* index = &drawingData->faceRightCount;
+                                addDrawnFace(&drawingData->cubeInstances[HXF_FACES_RIGHT_OFFSET + *index], &globalPosition, textureId, index);
+                            }
+                        }
+                        else if (worldPiece->cubes[x + 1][y][z] == 0) {
                             size_t* index = &drawingData->faceRightCount;
-                            addDrawnFace(&drawingData->cubeInstances[HXF_FACES_RIGHT_OFFSET + *index], &position, textureId, index);
+                            addDrawnFace(&drawingData->cubeInstances[HXF_FACES_RIGHT_OFFSET + *index], &globalPosition, textureId, index);
                         }
-                        if ((x != 0 && worldPiece->cubes[x - 1][y][z] == 0)
-                            || x == 0) {
+
+                        if (x == 0) {
+                            if (normalizedWorldPiecePosition.x > 0) {
+                                normalizedWorldPiecePosition.x--;
+                                const HxfWorldPiece* const restrict piece = (HxfWorldPiece*)hxfHashMapGet(worldPiecesMap, &normalizedWorldPiecePosition);
+                                if (piece == NULL || piece->cubes[HXF_WORLD_PIECE_SIZE - 1][y][z] == 0) {
+                                    size_t* index = &drawingData->faceLeftCount;
+                                    addDrawnFace(&drawingData->cubeInstances[HXF_FACES_LEFT_OFFSET + *index], &globalPosition, textureId, index);
+                                }
+                                normalizedWorldPiecePosition.x++;
+                            }
+                            else {
+                                size_t* index = &drawingData->faceLeftCount;
+                                addDrawnFace(&drawingData->cubeInstances[HXF_FACES_LEFT_OFFSET + *index], &globalPosition, textureId, index);
+                            }
+                        }
+                        else if (worldPiece->cubes[x - 1][y][z] == 0) {
                             size_t* index = &drawingData->faceLeftCount;
-                            addDrawnFace(&drawingData->cubeInstances[HXF_FACES_LEFT_OFFSET + *index], &position, textureId, index);
+                            addDrawnFace(&drawingData->cubeInstances[HXF_FACES_LEFT_OFFSET + *index], &globalPosition, textureId, index);
                         }
-                        if ((y != HXF_WORLD_PIECE_SIZE - 1 && worldPiece->cubes[x][y + 1][z] == 0)
-                            || y == HXF_WORLD_PIECE_SIZE - 1) {
+
+                        if (y == HXF_WORLD_PIECE_SIZE - 1) {
+                            if (normalizedWorldPiecePosition.y < HXF_WORLD_HEIGHT - 1) {
+                                normalizedWorldPiecePosition.y++;
+                                const HxfWorldPiece* const restrict piece = (HxfWorldPiece*)hxfHashMapGet(worldPiecesMap, &normalizedWorldPiecePosition);
+                                if (piece == NULL || piece->cubes[x][0][z] == 0) {
+                                    size_t* index = &drawingData->faceTopCount;
+                                    addDrawnFace(&drawingData->cubeInstances[HXF_FACES_TOP_OFFSET + *index], &globalPosition, textureId, index);
+                                }
+                                normalizedWorldPiecePosition.y--;
+                            }
+                            else {
+                                size_t* index = &drawingData->faceTopCount;
+                                addDrawnFace(&drawingData->cubeInstances[HXF_FACES_TOP_OFFSET + *index], &globalPosition, textureId, index);
+                            }
+                        }
+                        else if (worldPiece->cubes[x][y + 1][z] == 0) {
                             size_t* index = &drawingData->faceTopCount;
-                            addDrawnFace(&drawingData->cubeInstances[HXF_FACES_TOP_OFFSET + *index], &position, textureId, index);
+                            addDrawnFace(&drawingData->cubeInstances[HXF_FACES_TOP_OFFSET + *index], &globalPosition, textureId, index);
                         }
-                        if ((y != 0 && worldPiece->cubes[x][y - 1][z] == 0)
-                            || y == 0) {
+
+                        if (y == 0) {
+                            if (normalizedWorldPiecePosition.y > 0) {
+                                normalizedWorldPiecePosition.y--;
+                                const HxfWorldPiece* const restrict piece = (HxfWorldPiece*)hxfHashMapGet(worldPiecesMap, &normalizedWorldPiecePosition);
+                                if (piece == NULL || piece->cubes[x][HXF_WORLD_PIECE_SIZE - 1][z] == 0) {
+                                    size_t* index = &drawingData->faceBottomCount;
+                                    addDrawnFace(&drawingData->cubeInstances[HXF_FACES_BOTTOM_OFFSET + *index], &globalPosition, textureId, index);
+                                }
+                                normalizedWorldPiecePosition.y++;
+                            }
+                            else {
+                                size_t* index = &drawingData->faceBottomCount;
+                                addDrawnFace(&drawingData->cubeInstances[HXF_FACES_BOTTOM_OFFSET + *index], &globalPosition, textureId, index);
+                            }
+                        }
+                        else if (worldPiece->cubes[x][y - 1][z] == 0) {
                             size_t* index = &drawingData->faceBottomCount;
-                            addDrawnFace(&drawingData->cubeInstances[HXF_FACES_BOTTOM_OFFSET + *index], &position, textureId, index);
+                            addDrawnFace(&drawingData->cubeInstances[HXF_FACES_BOTTOM_OFFSET + *index], &globalPosition, textureId, index);
                         }
-                        if ((z != HXF_WORLD_PIECE_SIZE - 1 && worldPiece->cubes[x][y][z + 1] == 0)
-                            || z == HXF_WORLD_PIECE_SIZE - 1) {
+
+                        if (z == HXF_WORLD_PIECE_SIZE - 1) {
+                            if (normalizedWorldPiecePosition.z < HXF_WORLD_WIDTH - 1) {
+                                normalizedWorldPiecePosition.z++;
+                                const HxfWorldPiece* const restrict piece = (HxfWorldPiece*)hxfHashMapGet(worldPiecesMap, &normalizedWorldPiecePosition);
+                                if (piece == NULL || piece->cubes[x][y][0] == 0) {
+                                    size_t* index = &drawingData->faceFrontCount;
+                                    addDrawnFace(&drawingData->cubeInstances[HXF_FACES_FRONT_OFFSET + *index], &globalPosition, textureId, index);
+                                }
+                                normalizedWorldPiecePosition.z--;
+                            }
+                            else {
+                                size_t* index = &drawingData->faceFrontCount;
+                                addDrawnFace(&drawingData->cubeInstances[HXF_FACES_FRONT_OFFSET + *index], &globalPosition, textureId, index);
+                            }
+                        }
+                        else if (worldPiece->cubes[x][y][z + 1] == 0) {
                             size_t* index = &drawingData->faceFrontCount;
-                            addDrawnFace(&drawingData->cubeInstances[HXF_FACES_FRONT_OFFSET + *index], &position, textureId, index);
+                            addDrawnFace(&drawingData->cubeInstances[HXF_FACES_FRONT_OFFSET + *index], &globalPosition, textureId, index);
                         }
-                        if ((z != 0 && worldPiece->cubes[x][y][z - 1] == 0)
-                            || z == 0) {
+
+                        if (z == 0) {
+                            if (normalizedWorldPiecePosition.z > 0) {
+                                normalizedWorldPiecePosition.z--;
+                                const HxfWorldPiece* const restrict piece = (HxfWorldPiece*)hxfHashMapGet(worldPiecesMap, &normalizedWorldPiecePosition);
+                                if (piece == NULL || piece->cubes[x][y][HXF_WORLD_PIECE_SIZE - 1] == 0) {
+                                    size_t* index = &drawingData->faceBackCount;
+                                    addDrawnFace(&drawingData->cubeInstances[HXF_FACES_BACK_OFFSET + *index], &globalPosition, textureId, index);
+                                }
+                                normalizedWorldPiecePosition.z++;
+                            }
+                            else {
+                                size_t* index = &drawingData->faceBackCount;
+                                addDrawnFace(&drawingData->cubeInstances[HXF_FACES_BACK_OFFSET + *index], &globalPosition, textureId, index);
+                            }
+                        }
+                        else if (worldPiece->cubes[x][y][z - 1] == 0) {
                             size_t* index = &drawingData->faceBackCount;
-                            addDrawnFace(&drawingData->cubeInstances[HXF_FACES_BACK_OFFSET + *index], &position, textureId, index);
+                            addDrawnFace(&drawingData->cubeInstances[HXF_FACES_BACK_OFFSET + *index], &globalPosition, textureId, index);
                         }
                     }
                 }

@@ -72,6 +72,10 @@ int main(int argc, char** argv) {
 
     hxfAppStart(&param);
 
+    // When the HXF_DEBUG_ALLOC is defined print the information about the allocations.
+    // This is used to be sure all the memory is freed.
+    hxfAllocationInfo();
+
     return 0;
 }
 

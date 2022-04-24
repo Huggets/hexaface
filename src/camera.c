@@ -24,11 +24,12 @@ void hxfUpdatePointedCube(HxfCamera* restrict camera, const HxfWorld* restrict w
         const HxfIvec3 worldPiecePosition = hxfWorldPieceGetPositionF(&floatPosition);
 
         if (
-            worldPiecePosition.x >= world->startCorner.x && worldPiecePosition.x < world->endCorner.x
+            worldPiecePosition.x >= world->inStartCorner.x && worldPiecePosition.x < world->inEndCorner.x
             && worldPiecePosition.y == 0
-            && worldPiecePosition.z >= world->startCorner.z && worldPiecePosition.z < world->endCorner.z
+            && worldPiecePosition.z >= world->inStartCorner.z && worldPiecePosition.z < world->inEndCorner.z
             ) {
-            HxfUvec3 normPos = { worldPiecePosition.x - world->startCorner.x, 0, worldPiecePosition.z - world->startCorner.z };
+            HxfUvec3 normPos;
+            hxfWorldNormalizePosition(&world->outStartCorner, &worldPiecePosition, &normPos);
             HxfWorldPiece* const worldPiece = hxfHashMapGet(worldPiecesMap, &normPos);
 
             const HxfIvec3 worldPieceRelativePosition = hxfWorldGetLocalPosition(&intPosition);
